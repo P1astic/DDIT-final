@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.human.mapper.MemberMapper">
+
+	<!-- 24.10.1. 홍정호 로그인 시 select 하는 로직 수정 -->
+	<select id="getLogin" parameterType="memberVO" resultMap="memberMap">
+		SELECT
+		    MEM.MEM_ID, MEM.PASSWORD, MEM.ENABLED,
+		    AU.AUTH_CODE,
+		    EMP.EMP_NM, EMP.EMP_RRNO, EMP.EMP_EML, EMP.EMP_MOBLPHON, EMP.EMP_ZIP,
+		    EMP.EMP_ROAD_NM_ADDR, EMP.EMP_DADDR, EMP.EMP_IMG_URL, EMP.EMP_YRYC_DAYCNT,
+		    EMP.EMP_HDOF_STAT, EMP.EMP_JNCMP_YMD, EMP.EMP_RSGNTN_YMD, EMP.EMP_ATRZ_SGN,
+		    JBGD.JBGD_CD, JBGD.JBGD_NM,   
+		    DEPT.DEPT_CD, DEPT.DEPT_NM,
+		    BP.BP_NM, BP.BP_RPRSV_NM, BP.BP_TELNO, BP.BP_BRNO, BP.CTRT_YMD,
+		    BP.CTRT_END_YMD, BP.BP_IMG_URL, BP.BP_IMG_NM, BP.BP_EML
+		FROM MEMBER MEM
+		JOIN AUTH_LINK AU ON MEM.MEM_ID = AU.MEM_ID
+		LEFT JOIN EMPLOYEE EMP ON MEM.MEM_ID = EMP.MEM_ID
+		LEFT JOIN JOB_GRADE JBGD ON JBGD.JBGD_CD = EMP.JBGD_CD
+		LEFT JOIN DEPARTMENT DEPT ON DEPT.DEPT_CD = EMP.DEPT_CD
+		LEFT JOIN BP BP ON MEM.MEM_ID = BP.MEM_ID
+		WHERE MEM.ENABLED = '1'
+		AND MEM.MEM_ID = #{username}
+     </select>
+	
+	<resultMap type="memberVO" id="memberMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="password" column="PASSWORD"/>
+		<result property="enabled" column="ENABLED"/>
+		<association property="employeeVO" resultMap="employeeMap"></association>
+		<association property="bpVO" resultMap="bpMap"></association>
+		<association property="jobGradeVO" resultMap="jobGradeMap"></association>
+		<association property="deptVO" resultMap="deptMap"></association>
+		<collection property="authLinkVOList" resultMap="authLinkMap"></collection>
+	</resultMap>
+	
+	<resultMap type="authLinkVO" id="authLinkMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="authCode" column="AUTH_CODE"/>
+	</resultMap>
+	
+	<resultMap type="employeeVO" id="employeeMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empRrno" column="EMP_RRNO"/>
+		<result property="empEml" column="EMP_EML"/>
+		<result property="empMoblphon" column="EMP_MOBLPHON"/>
+		<result property="empZip" column="EMP_ZIP"/>
+		<result property="empRoadNmAddr" column="EMP_ROAD_NM_ADDR"/>
+		<result property="empDaddr" column="EMP_DADDR"/>
+		<result property="empImgUrl" column="EMP_IMG_URL"/>
+		<result property="empImgNm" column="EMP_IMG_NM"/>
+		<result property="empYrycDaycnt" column="EMP_YRYC_DAYCNT"/>
+		<result property="empHdofStat" column="EMP_HDOF_STAT"/>
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD"/>
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD"/>
+		<result property="empAtrzSgn" column="EMP_ATRZ_SGN"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="deptCd" column="DEPT_CD"/>
+	</resultMap>
+
+	<resultMap type="bpVO" id="bpMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="bpNm" column="BP_NM"/>
+		<result property="bpRprsvNm" column="BP_RPRSV_NM"/>
+		<result property="bpTelno" column="BP_TELNO"/>
+		<result property="bpBrno" column="BP_BRNO"/>
+		<result property="ctrtYmd" column="CTRT_YMD"/>
+		<result property="ctrtEndYmd" column="CTRT_END_YMD"/>
+	</resultMap>
+	
+	<resultMap type="jobGradeVO" id="jobGradeMap">
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="jbgdNm" column="JBGD_NM"/>
+	</resultMap>
+	
+	<resultMap type="deptVO" id="deptMap">
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="deptNm" column="DEPT_NM"/>
+	</resultMap>
+	
+			
+<!-- 1)   240923 임세희 아이디 이메일이 DB에 존재하는지 검사 
+   memberVO{memId:a001,employeeVO.empEml:sehe0700@naver.co}
+ -->
+
+<!--  <select id="checkEmail" parameterType="memberVO" resultMap="memberMap"> -->
+<!--       SELECT A.MEM_ID, A.PASSWORD, A.ENABLED, B.EMP_EML, B.EMP_NM -->
+<!--       FROM MEMBER A -->
+<!--       INNER JOIN EMPLOYEE B -->
+<!--       ON A.MEM_ID = B.MEM_ID -->
+<!--       WHERE A.MEM_ID = #{memId} -->
+<!--       OR B.EMP_EML= #{employeeVO.empEml} -->
+<!--    </select> -->
+	<select id="checkEmail" parameterType="memberVO" resultMap="memberMap">
+	    SELECT A.MEM_ID, A.PASSWORD, A.ENABLED, B.EMP_EML, B.EMP_NM
+	    FROM MEMBER A
+	    LEFT JOIN EMPLOYEE B ON A.MEM_ID = B.MEM_ID
+	    WHERE A.MEM_ID = #{memId} 
+	    AND B.EMP_EML = #{employeeVO.empEml}
+	</select>
+
+ 	<!-- 1) 실행 후 있을때만 2) 240923 임세희 임시비밀번호 발급을 위한 업데이트  -->
+	<update id="updatePwd" parameterType="memberVO">
+		UPDATE MEMBER A
+		SET A.PASSWORD = #{password}
+		WHERE A.MEM_ID = #{memId}
+		AND EXISTS (
+		    SELECT 1
+		    FROM EMPLOYEE B
+		    WHERE A.MEM_ID = B.MEM_ID
+		    AND B.EMP_EML = #{employeeVO.empEml}
+		)
+	</update>
+
+	<!-- map{memId:a001,password:java} -->	
+<!-- 	<update id="updatePwd" parameterType="hashMap"> -->
+<!-- 		update member set password = #{password} -->
+<!-- 		where mem_id = #{memId} -->
+<!-- 	</update> -->
+
+
+</mapper>
+
+
+

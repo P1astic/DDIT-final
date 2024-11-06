@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.human.mapper.IEmployeeMapper">
+
+
+	<!-- 동적 쿼리 필요에따라서 수행 할 수도 안할 수도 있다 -->
+	<sql id="empSearch">
+		<!-- <if test="searchType != null and searchType =='title'"> -->
+		<!-- and (bo_title like '%'||#{searchWord}||'%') -->
+		<!-- </if> -->
+		<if test="params.searchWord != null and params.searchWord != ''">
+			and e.emp_nm LIKE '%' || #{params.searchWord} || '%'
+		</if>
+	</sql>
+	<sql id="profile">
+
+		<if test="jbgdCd != null and jbgdCd != ''">
+			jbgd_cd = #{jbgdCd, jdbcType=NUMERIC},
+		</if>
+		<if test="memId != null and memId != ''">
+			mem_id = #{memId},
+		</if>
+		<if test="empNm != null and empNm != ''">
+			emp_nm = #{empNm},
+		</if>
+		<if test="empMoblphon != null and empMoblphon != ''">
+			emp_moblphon = #{empMoblphon},
+		</if>
+		<!-- <if test="empPw != null and empPw != ''"> -->
+		<!-- emp_pw = #{empPw}, -->
+		<!-- </if> -->
+		<if test="empEml != null and empEml != ''">
+			emp_eml = #{empEml},
+		</if>
+		<!-- <if test="empBirth != null and empBirth != ''"> -->
+		<!-- emp_birth = #{empBirth}, -->
+		<!-- </if> -->
+		<if test="empZip != null and empZip != ''">
+			emp_zip = #{empZip},
+		</if>
+		<if test="empRoadNmAddr != null and empRoadNmAddr != ''">
+			emp_road_nm_addr = #{empRoadNmAddr},
+		</if>
+		<if test="empDaddr != null and empDaddr != ''">
+			emp_daddr = #{empDaddr},
+		</if>
+	</sql>
+
+	<resultMap type="employeeVO" id="employeeMap">
+		<result property="memId" column="MEM_ID" />
+		<result property="empNm" column="EMP_NM" />
+		<result property="empRrno" column="EMP_RRNO" />
+		<result property="empEml" column="EMP_EML" />
+		<result property="empMoblphon" column="EMP_MOBLPHON" />
+		<result property="empZip" column="EMP_ZIP" />
+		<result property="empRoadNmAddr" column="EMP_ROAD_NM_ADDR" />
+		<result property="empDaddr" column="EMP_DADDR" />
+		<result property="empImg" column="EMP_IMG" />
+		<result property="empYrycDaycnt" column="EMP_YRYC_DAYCNT" />
+		<result property="empHdofStat" column="EMP_HDOF_STAT" />
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD" />
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD" />
+		<result property="empAtrzSgn" column="EMP_ATRZ_SGN" />
+		<result property="jbgdCd" column="JBGD_CD" />
+		<result property="deptCd" column="DEPT_CD" />
+		<result property="empGender" column="EMP_GENDER" />
+		<result property="password" column="PASSWORD" />
+		<result property="enabled" column="ENABLED" />
+		<collection property="memberVOList"
+			resultMap="memberInfoMap">
+		</collection>
+	</resultMap>
+
+	<resultMap type="memberVO" id="memberInfoMap">
+		<result property="memId" column="MEM_ID" />
+		<result property="password" column="PASSWORD" />
+		<result property="enabled" column="ENABLED" />
+	</resultMap>
+
+
+
+	<select id="keyupSearchEmpList" parameterType="string"
+		resultType="EmployeeVO">
+		select
+		MEM_ID, EMP_NM, EMP_RRNO, EMP_EML, EMP_MOBLPHON, EMP_ZIP, EMP_ROAD_NM_ADDR,
+		EMP_DADDR, EMP_IMG, EMP_YRYC_DAYCNT,
+		EMP_HDOF_STAT, EMP_JNCMP_YMD, EMP_RSGNTN_YMD, 
+		EMP_ATRZ_SGN, JBGD_CD, DEPT_CD,
+		EMP_GENDER
+		from
+		employee
+		where emp_nm like '%'||#{empNm}||'%'
+<!-- 		where emp_nm like '%'||#{empNmObj}||'%' -->
+		
+		
+
+
+
+	</select>
+
+	<!-- 시큐리티 인증 시, UserDetailsService 만들때 사용하는 쿼리임 -->
+	<!-- 퇴사처리된 사원은 로그인 불가 -->
+	<select id="readByUserId" parameterType="string"
+		resultMap="employeeMap">
+		select
+		e.emp_no, emp_id, e.position_no, emp_pw, emp_name,
+		emp_phone, emp_mail,
+		emp_birth, emp_profileimg,
+		emp_postcode,
+		emp_address1, emp_address2, emp_indate, emp_outdate, enabled,
+		emp_fireyn, auth,
+		p.position_name as position_name , m.pro_no as
+		pro_no, ce.chatroom_no,
+		ce.chat_startno, ce.chat_readno, ce.chat_title
+		from employee e
+		left outer join employee_auth ea on(e.emp_no =
+		ea.emp_no)
+		left outer join position p on(e.position_no = p.position_no)
+		left outer join members m on(e.emp_no = m.emp_no)
+		left outer join
+		chat_entry ce on(ce.emp_no = e.emp_no)
+		where e.emp_id =
+		${empId}
+		and
+		e.emp_fireyn = 'N'
+	</select>
+
+
+
+	<!-- 관리자 - 사원목록 -->
+	<select id="empList" resultMap="employeeMap">
+		select
+		e.emp_no, emp_id, e.position_no, emp_pw, emp_name,
+		emp_phone,
+		emp_mail, emp_birth, emp_profileimg, emp_postcode,
+		emp_address1,
+		emp_address2, emp_indate, emp_outdate, enabled,
+		emp_fireyn, auth,
+		p.position_name as position_name, m.pro_no as pro_no, pj.pro_name as
+		pro_name
+		from
+		employee e
+		left outer join employee_auth ea on(e.emp_no =
+		ea.emp_no)
+		left outer join position p on(e.position_no = p.position_no)
+		left outer
+		join members m on(e.emp_no = m.emp_no)
+		left outer join
+		projects pj
+		on(m.pro_no = pj.pro_no)
+		where 1=1
+		<include refid="empSearch" />
+		order by emp_no asc
+	</select>
+
+	<!-- 관리자 - 사원 상세보기 -->
+	<select id="getEmpByNo" parameterType="int"
+		resultMap="employeeMap">
+		select
+		e.emp_no, emp_id, e.position_no, emp_pw, emp_name,
+		emp_phone, emp_mail, emp_birth, emp_profileimg, emp_postcode,
+		emp_address1, emp_address2, emp_indate, emp_outdate, enabled,
+		emp_fireyn, auth,
+		p.position_name as position_name, m.pro_no as pro_no,
+		pj.pro_name as pro_name
+		from
+		employee e
+		left outer join employee_auth ea
+		on(e.emp_no = ea.emp_no)
+		left outer join position p on(e.position_no =
+		p.position_no)
+		left outer
+		join members m on(e.emp_no = m.emp_no)
+		left
+		outer join projects pj
+		on(m.pro_no = pj.pro_no)
+		where e.emp_no =
+		#{empNo}
+		order by emp_no asc
+	</select>
+
+	<!-- 관리자 - 사원 수정 기능 -->
+	<!-- 수정버튼 진입시 > 수정일때는 등록 이벤트를 수정 이벤트로 변경한다. -->
+	<update id="updateEmp" parameterType="employeeVO">
+		update employee
+		set
+		<include refid="profile" />
+		emp_outdate = #{empOutdate, jdbcType=VARCHAR},
+		emp_fireyn =
+		#{empFireyn}
+		<!-- emp_id = #{empId} -->
+		where emp_no = #{empNo}
+	</update>
+
+	<!-- 관리자 - 사원 등록 기능 -->
+	<!-- selectKey: employee 테이블의 pk 설정 -->
+	<insert id="insertEmp" parameterType="employeeVO"
+		useGeneratedKeys="true">
+		<selectKey keyProperty="empNo" resultType="int"
+			order="BEFORE">
+			select coalesce(max(emp_no), 0) + 1 FROM employee
+		</selectKey>
+		insert into employee(
+		emp_no, emp_id, position_no, emp_pw, emp_name,
+		emp_phone, emp_mail,
+		emp_birth,
+		emp_profileimg, emp_postcode,
+		emp_address1, emp_address2, emp_indate, emp_outdate,
+		enabled,
+		emp_fireyn
+		) values(
+		#{empNo}, #{empId}, #{positionNo}, #{empPw},
+		#{empName}, #{empPhone},
+		#{empMail}, #{empBirth},
+		#{empProfileimg},
+		#{empPostcode}, #{empAddress1}, #{empAddress2}, to_char(sysdate,
+		'YYYY-MM-DD'), '', 1, 'N'
+		)
+	</insert>
+
+	<!-- 회원가입 요구사항 (한명의 회원은 하나의 권한을 무조건 가질수 있도록 권한 등록 - 스프링시큐리티 적용시) -->
+	<insert id="insertAuth" parameterType="int">
+		insert into employee_auth
+		values('ROLE_USER',#{empNo})
+	</insert>
+
+	<!-- 회원가입 페이지 - 중복확인 클릭 이벤트 메소드 -->
+	<select id="idCheck" parameterType="string"
+		resultType="employeeVO">
+		select
+		emp_no, emp_id, position_no, emp_pw, emp_name,
+		emp_phone, emp_mail,
+		emp_birth,
+		emp_profileimg, emp_postcode,
+		emp_address1, emp_address2, emp_indate, emp_outdate,
+		emp_fireyn
+		from
+		employee
+		where emp_id = #{empId}
+	</select>
+
+	<!-- 목록에서 선택한 사원의 목록 downloadPDF2 //{"list":[1,2,3]} -->
+	<select id="downloadPDF2" parameterType="hashMap"
+		resultType="employeeVO">
+		SELECT EMP_NO, EMP_ID, POSITION_NO, EMP_PW, EMP_NAME, EMP_PHONE,
+		EMP_MAIL, EMP_BIRTH, EMP_PROFILEIMG, EMP_POSTCODE, EMP_ADDRESS1,
+		EMP_ADDRESS2, EMP_INDATE, EMP_OUTDATE, ENABLED, EMP_FIREYN
+		FROM
+		EMPLOYEE
+		WHERE EMP_NO IN
+		<foreach collection="list" item="empNo" index="index"
+			separator="," open="(" close=")">
+			#{empNo}
+		</foreach>
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+

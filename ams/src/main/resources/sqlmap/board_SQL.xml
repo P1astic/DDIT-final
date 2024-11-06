@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.board.mapper.BoardMapper">
+	<sql id="where">
+		<if test="gubun != null and gubun != ''">
+			<choose>
+				<when test="gubun == 'all'">
+					AND NTC_BRD_TTL LIKE '%' || #{keyword} || '%'
+					OR NTC_BRD_CN LIKE '%' || #{keyword} || '%'
+					OR EMP_NM LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'title'">
+					AND NTC_BRD_TTL LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'content'">
+					AND NTC_BRD_CN LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'author'">
+					AND EMP_NM LIKE '%' || #{keyword} || '%'
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="bpBoardList" parameterType="hashMap" resultType="boardVO">
+		WITH T AS
+		(
+			SELECT E.EMP_NM,
+	               B.NTC_BRD_NO, B.MEM_ID, B.NTC_BRD_TYPE,
+	               B.NTC_BRD_TTL,
+	               SUBSTR(B.NTC_BRD_REG_YMD,1,4)||'-'||SUBSTR(B.NTC_BRD_REG_YMD,5,2)||'-'||SUBSTR(B.NTC_BRD_REG_YMD,7,2) AS NTC_BRD_REG_YMD,
+	               B.NTC_BRD_CN,
+	               B.NTC_BRD_INQ_CNT, FILE_GROUP_NO,
+	               ROW_NUMBER() OVER (ORDER BY 
+	                   CASE WHEN B.NTC_BRD_TYPE = 'O1' THEN 0 ELSE 1 END, 
+	                   B.NTC_BRD_NO DESC
+	               ) AS RNUM
+	        FROM NOTICE_BOARD B
+	            JOIN EMPLOYEE E ON (B.MEM_ID = E.MEM_ID)
+	        WHERE (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE= 'O1')
+			<if test="gubun != null and gubun != ''">
+			<choose>
+				<when test="gubun == 'all'">
+				    AND (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE = 'O1')
+				    AND (NTC_BRD_TTL LIKE '%' || #{keyword} || '%' 
+				         OR NTC_BRD_CN LIKE '%' || #{keyword} || '%' 
+				         OR EMP_NM LIKE '%' || #{keyword} || '%')
+				</when>
+				<when test="gubun == 'title'">
+					AND (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE = 'O1')
+					AND NTC_BRD_TTL LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'content'">
+					AND (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE = 'O1')
+					AND NTC_BRD_CN LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'author'">
+					AND (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE = 'O1')
+					AND EMP_NM LIKE '%' || #{keyword} || '%'
+				</when>
+			</choose>
+		</if>
+		)
+		SELECT * FROM T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)
+	</select>
+	
+	<select id="empBoardList" parameterType="hashMap" resultType="boardVO">
+	    WITH T AS
+	    (
+	        SELECT E.EMP_NM,
+	               B.NTC_BRD_NO, 
+	               B.MEM_ID, 
+	               B.NTC_BRD_TYPE,
+	               B.NTC_BRD_TTL,
+	               SUBSTR(B.NTC_BRD_REG_YMD, 1, 4) || '-' || SUBSTR(B.NTC_BRD_REG_YMD, 5, 2) || '-' || SUBSTR(B.NTC_BRD_REG_YMD, 7, 2) AS NTC_BRD_REG_YMD,
+	               B.NTC_BRD_CN,
+	               B.NTC_BRD_INQ_CNT, 
+	               FILE_GROUP_NO,
+	               ROW_NUMBER() OVER (ORDER BY 
+	                   CASE WHEN B.NTC_BRD_TYPE = 'O1' THEN 0 ELSE 1 END, 
+	                   B.NTC_BRD_NO DESC
+	               ) AS RNUM
+	        FROM NOTICE_BOARD B
+	        JOIN EMPLOYEE E ON (B.MEM_ID = E.MEM_ID)
+	        WHERE B.NTC_BRD_TYPE != 'O7'
+	        AND B.NTC_BRD_TYPE != 'O8'
+	        <choose>
+	            <when test="gubun == 'all'">
+	                AND (NTC_BRD_TTL LIKE '%' || #{keyword} || '%'
+	                     OR NTC_BRD_CN LIKE '%' || #{keyword} || '%'
+	                     OR EMP_NM LIKE '%' || #{keyword} || '%')
+	            </when>
+	            <when test="gubun == 'title'">
+	                AND NTC_BRD_TTL LIKE '%' || #{keyword} || '%'
+	            </when>
+	            <when test="gubun == 'content'">
+	                AND NTC_BRD_CN LIKE '%' || #{keyword} || '%'
+	            </when>
+	            <when test="gubun == 'author'">
+	                AND EMP_NM LIKE '%' || #{keyword} || '%'
+	            </when>
+	            <when test="gubun == 'dept'">
+	                AND B.NTC_BRD_TYPE LIKE '%' || #{deptGubun} || '%'
+	            </when>
+	        </choose>
+		    )
+		    SELECT * FROM T
+		    WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 - 1) AND (#{currentPage} * 15)
+	</select>
+
+	
+	<select id="detail" parameterType="String" resultType="boardVO">
+		SELECT E.EMP_NM,
+		       B.NTC_BRD_NO, B.MEM_ID, B.NTC_BRD_TYPE,
+		       B.NTC_BRD_TTL, 
+		       SUBSTR(B.NTC_BRD_REG_YMD,1,4)||'-'||SUBSTR(B.NTC_BRD_REG_YMD,5,2)||'-'||SUBSTR(B.NTC_BRD_REG_YMD,7,2) AS NTC_BRD_REG_YMD,
+		       B.NTC_BRD_CN,
+		       B.NTC_BRD_INQ_CNT, FILE_GROUP_NO
+		FROM NOTICE_BOARD B
+		    JOIN EMPLOYEE E ON (B.MEM_ID = E.MEM_ID)
+		WHERE B.NTC_BRD_NO = #{ntcBrdNo}
+	</select>
+	
+	<select id="fileList" parameterType="long" resultType="FileDetailVO">
+		SELECT FILE_SN, 
+			   FILE_GROUP_NO, FILE_ORGNL_FILE_NM, FILE_STRG_FILE_NM,
+			   FILE_FILE_PATH_NM, FILE_SZ, FILE_FILE_EXTN_NM, FILE_MIME,
+			   FILE_FANCYSIZE, FILE_FILE_STRG_YMD, FILE_DWNLD_CNT
+		FROM FILE_DETAIL
+		WHERE FILE_GROUP_NO = #{fileGroupNo}
+	</select>
+	
+	<update id="updateCnt" parameterType="String">
+		UPDATE NOTICE_BOARD
+		SET NTC_BRD_INQ_CNT = NTC_BRD_INQ_CNT +1
+		WHERE NTC_BRD_NO = #{ntcBrdNo}
+	</update>
+	
+	<select id="noticeType" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD, COM_DET_CD_NM
+		FROM COMMON_CODE_DETAIL
+		WHERE COM_CD_GROUP = 'O'
+	</select>
+	
+	<select id="bpNoticeType" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD, COM_DET_CD_NM
+		FROM COMMON_CODE_DETAIL
+		WHERE COM_DET_CD = 'O7'
+	</select>	
+	
+
+	<insert id="registPost" parameterType="boardVO">
+	 	<selectKey resultType="String" order="BEFORE" keyProperty="ntcBrdNo">
+	 		SELECT 'NTCBRD-' || TO_CHAR(SYSDATE, 'YYYYMMDD') || '-' ||
+			       LPAD(NVL(MAX(SUBSTR(NTC_BRD_NO, -3)) + 1, 1), 3, '0') AS NTC_BRD_NO
+			FROM NOTICE_BOARD
+			WHERE SUBSTR(NTC_BRD_NO, 8, 8) = TO_CHAR(SYSDATE, 'YYYYMMDD')
+	 	</selectKey>
+			INSERT INTO NOTICE_BOARD(NTC_BRD_NO, MEM_ID, NTC_BRD_TYPE, NTC_BRD_TTL, NTC_BRD_REG_YMD, NTC_BRD_CN, NTC_BRD_INQ_CNT, FILE_GROUP_NO)
+			VALUES(#{ntcBrdNo}
+			       , #{memId}
+			       , #{ntcBrdType}
+			       , #{ntcBrdTtl}
+			       , TO_CHAR(SYSDATE, 'YYYYMMDD')
+			       , #{ntcBrdCn}
+			       , #{ntcBrdInqCnt}
+			       , #{fileGroupNo})
+	 </insert>
+	 
+	 <!-- 
+	 * 공지사항 분류명 가져오기
+	 * URI : /emp/board/getNoticeTypeNm
+	 * 요청방식 : post
+	 * 요청 파라미터 : comDetCd
+	  -->
+	  <select id="getNoticeTypeNm" parameterType="String" resultType="CommonCodeDetailVO">
+	  	SELECT COM_DET_CD
+	  		   , COM_CD_GROUP
+	  		   , COM_DET_CD_NM
+	  		   , COM_DET_CD_CN
+	  	FROM COMMON_CODE_DETAIL
+	  	WHERE COM_DET_CD = #{comDetCd}
+	  </select>
+	  
+	  <delete id="deleteFile" parameterType="long">
+	  	DELETE FROM FILE_DETAIL
+	  	WHERE FILE_GROUP_NO = #{fileGroupNo}  
+	  </delete>
+	  
+	  <delete id="delete" parameterType="String">
+	  	DELETE FROM NOTICE_BOARD
+	  	WHERE NTC_BRD_NO = #{ntcBrdNo}
+	  </delete>
+	
+	
+	  <select id="getTotal" parameterType="hashMap" resultType="int">
+	  	 SELECT COUNT(*)
+			FROM NOTICE_BOARD B
+			    JOIN EMPLOYEE E ON (B.MEM_ID = E.MEM_ID)
+			WHERE B.NTC_BRD_TYPE != 'O7'
+	        AND B.NTC_BRD_TYPE != 'O8'
+			<include refid="where"></include>
+	  </select>
+	  
+	  <select id="getCustTotal" parameterType="hashMap" resultType="int">
+	  	 SELECT COUNT(*)
+			FROM NOTICE_BOARD B
+			    JOIN EMPLOYEE E ON (B.MEM_ID = E.MEM_ID)
+			WHERE (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE= 'O1')
+			<if test="gubun != null and gubun != ''">
+			<choose>
+				<when test="gubun == 'all'">
+				    AND (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE = 'O1')
+				    AND (NTC_BRD_TTL LIKE '%' || #{keyword} || '%' 
+				         OR NTC_BRD_CN LIKE '%' || #{keyword} || '%' 
+				         OR EMP_NM LIKE '%' || #{keyword} || '%')
+				</when>
+				<when test="gubun == 'title'">
+					AND (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE = 'O1')
+					AND NTC_BRD_TTL LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'content'">
+					AND (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE = 'O1')
+					AND NTC_BRD_CN LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'author'">
+					AND (B.NTC_BRD_TYPE = 'O7' OR B.NTC_BRD_TYPE = 'O1')
+					AND EMP_NM LIKE '%' || #{keyword} || '%'
+				</when>
+			</choose>
+		</if>
+	  </select>
+	  
+	  
+	  <!-- 
+	   //파일이 있을 때에만 그룹 번호를 boardVO 에 넣어주자
+	   //파일이 없으면 fileGroupNo 프로퍼티에 null(boardVO.setFileGroupNo(fileGroupNo)이 생략 됬으므로)
+	   -->
+	  <update id="editPost" parameterType="boardVO">
+	  	UPDATE NOTICE_BOARD
+		SET NTC_BRD_TTL = #{ntcBrdTtl}
+		    , NTC_BRD_CN = #{ntcBrdCn}
+		    , NTC_BRD_REG_YMD = TO_CHAR(SYSDATE, 'YYYYMMDD')
+		    <if test="fileGroupNo!=null and fileGroupNo!=''">
+		    , FILE_GROUP_NO = #{fileGroupNo}
+		    </if>
+		WHERE NTC_BRD_NO = #{ntcBrdNo}
+	  </update>
+	  
+	  
+	  
+	  <select id="currBoard" resultType="boardVO">
+	   <![CDATA[
+		SELECT *
+				FROM (
+				SELECT *
+				FROM (
+				    SELECT 
+				        A.NTC_BRD_NO, 
+				        A.MEM_ID, 
+				        A.NTC_BRD_TYPE, 
+				        A.NTC_BRD_TTL, 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 1, 4) || '-' || 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 5, 2) || '-' || 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 7, 2) AS NTC_BRD_REG_YMD,
+				        A.NTC_BRD_CN, 
+				        A.NTC_BRD_INQ_CNT,
+				        B.EMP_NM
+				    FROM NOTICE_BOARD A
+				        INNER JOIN EMPLOYEE B ON A.MEM_ID = B.MEM_ID
+				    WHERE 1=1
+				    AND NTC_BRD_TYPE != 'O1'
+				    AND NTC_BRD_TYPE != 'O7'
+				    AND NTC_BRD_TYPE != 'O8'
+				    ORDER BY 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 1, 4) || '-' || 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 5, 2) || '-' || 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 7, 2) DESC,  
+				        A.NTC_BRD_NO DESC  
+				)
+				WHERE ROWNUM <= 3  
+				)
+				ORDER BY NTC_BRD_REG_YMD DESC
+          ]]>
+	  </select>
+	  
+	  <select id="currKeyBoard" resultType="boardVO">
+	   <![CDATA[
+			SELECT *
+				FROM (
+				SELECT *
+				FROM (
+				    SELECT 
+				        A.NTC_BRD_NO, 
+				        A.MEM_ID, 
+				        A.NTC_BRD_TYPE, 
+				        A.NTC_BRD_TTL, 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 1, 4) || '-' || 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 5, 2) || '-' || 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 7, 2) AS NTC_BRD_REG_YMD,
+				        A.NTC_BRD_CN, 
+				        A.NTC_BRD_INQ_CNT,
+				        B.EMP_NM
+				    FROM NOTICE_BOARD A
+				        INNER JOIN EMPLOYEE B ON A.MEM_ID = B.MEM_ID
+				    WHERE 1=1
+				    AND NTC_BRD_TYPE = 'O1'
+				    AND NTC_BRD_TYPE != 'O7'
+				    AND NTC_BRD_TYPE != 'O8'
+				    ORDER BY 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 1, 4) || '-' || 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 5, 2) || '-' || 
+				        SUBSTR(A.NTC_BRD_REG_YMD, 7, 2) DESC,  
+				        A.NTC_BRD_NO DESC  
+				)
+				WHERE ROWNUM <= 2  
+				)
+				ORDER BY NTC_BRD_REG_YMD DESC
+         ]]>
+	  </select>
+</mapper>

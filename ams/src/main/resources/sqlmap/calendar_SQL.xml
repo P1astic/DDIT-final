@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.calendar.mapper.CalendarMapper">
+	
+	<select id="getMySchedule" parameterType="String" resultType="calendarVO">
+		SELECT C.SCHE_NO
+			   , C.SCHE_ID
+			   , C.SCHE_TYPE
+			   , C.SCHE_TITLE
+			   , C.SCHE_CONTENT
+			   , C.SCHE_START_DATE
+			   , C.SCHE_START_TIME
+			   , C.SCHE_END_DATE
+			   , C.SCHE_END_TIME
+			   , C.CREATE_YMD
+			   , C.CREATE_EMP
+			   , C.MEM_ID AS SCHE_MEM_ID
+			   , C.FILE_GROUP_NO
+			   , C.ALL_DAY
+			   , C.BACK_GROUND_COLOR
+			   , C.ROOM_ID
+			   , V.MEM_ID AS VIDEO_CRAETE_MEM_ID
+		  FROM CALENDAR C
+		  LEFT OUTER JOIN VIDEO_CHAT V ON(C.ROOM_ID = V.ROOM_ID)
+		 WHERE C.MEM_ID = #{memId}
+	</select>
+	
+	<select id="getComnSchedule" resultType="calendarVO">
+		SELECT C.SCHE_NO
+			   , C.SCHE_ID
+			   , C.SCHE_TYPE
+			   , C.SCHE_TITLE
+			   , C.SCHE_CONTENT
+			   , C.SCHE_START_DATE
+			   , C.SCHE_START_TIME
+			   , C.SCHE_END_DATE
+			   , C.SCHE_END_TIME
+			   , C.CREATE_YMD
+			   , C.CREATE_EMP
+			   , C.MEM_ID AS SCHE_MEM_ID
+			   , C.FILE_GROUP_NO
+			   , C.ALL_DAY
+			   , C.BACK_GROUND_COLOR
+			   , C.ROOM_ID
+			   , V.MEM_ID AS VIDEO_CRAETE_MEM_ID
+		  FROM CALENDAR C
+		  LEFT OUTER JOIN VIDEO_CHAT V ON(C.ROOM_ID = V.ROOM_ID)
+		 WHERE C.SCHE_TYPE = 'com'
+	</select>
+	
+	<select id="getDeptSchedule" parameterType="String" resultType="calendarVo">
+		SELECT C.SCHE_NO
+			   , C.SCHE_ID
+			   , C.SCHE_TYPE
+			   , C.SCHE_TITLE
+			   , C.SCHE_CONTENT
+			   , C.SCHE_START_DATE
+			   , C.SCHE_START_TIME
+			   , C.SCHE_END_DATE
+			   , C.SCHE_END_TIME
+			   , C.CREATE_YMD
+			   , C.CREATE_EMP
+			   , C.MEM_ID AS SCHE_MEM_ID
+			   , C.FILE_GROUP_NO
+			   , C.ALL_DAY
+			   , C.BACK_GROUND_COLOR
+			   , C.ROOM_ID
+			   , V.MEM_ID AS VIDEO_CRAETE_MEM_ID
+		  FROM CALENDAR C
+		  LEFT OUTER JOIN VIDEO_CHAT V ON(C.ROOM_ID = V.ROOM_ID)
+		 WHERE C.SCHE_TYPE = #{deptCd}
+	</select>
+	
+	<select id="getScheduleMemList" parameterType="String" resultMap="employeeMap">
+		SELECT M.MEM_ID
+		      , M.EMP_NM
+		      , J.JBGD_NM
+		FROM EMPLOYEE M
+		INNER JOIN CALENDAR S ON(S.MEM_ID = M.MEM_ID)
+		INNER JOIN JOB_GRADE J ON(J.JBGD_CD = M.JBGD_CD)
+		WHERE S.SCHE_ID = #{scheId}
+	</select>
+	
+	<resultMap type="employeeVO" id="employeeMap">
+		<result property="empImgNm" column="EMP_IMG_NM"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empRrno" column="EMP_RRNO"/>
+		<result property="empEml" column="EMP_EML"/>
+		<result property="empMoblphon" column="EMP_MOBLPHON"/>
+		<result property="empZip" column="EMP_ZIP"/>
+		<result property="empRoadNmAddr" column="EMP_ROAD_NM_ADDR"/>
+		<result property="empDaddr" column="EMP_DADDR"/>
+		<result property="empImgUrl" column="EMP_IMG_URL"/>
+		<result property="empYrycDaycnt" column="EMP_YRYC_DAYCNT"/>
+		<result property="empHdofStat" column="EMP_HDOF_STAT"/>
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD"/>
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD"/>
+		<result property="empAtrzSgn" column="EMP_ATRZ_SGN"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="empGender" column="EMP_GENDER"/>
+		<association property="jobGrade" resultMap="jobGradeMap"></association>
+	</resultMap>
+	
+	<resultMap type="jobGradeVO" id="jobGradeMap">
+		<result property="jbgdNm" column="JBGD_NM"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+	</resultMap>
+	
+	<select id="createScheId" parameterType="String" resultType="String">
+		SELECT 'SCHE-' || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD(NVL(MAX(TO_NUMBER(SUBSTR(sche_id, 12))), 0) + 1, 3, '0') AS SCHE_ID
+		FROM CALENDAR
+		WHERE SUBSTR(sche_id, 6, 6) = TO_CHAR(SYSDATE, 'YYMMDD')
+	</select>
+	
+	<insert id="createScheduleVideoChat" parameterType="calendarVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="scheNo">
+			SELECT NVL(MAX(SCHE_NO),0)+1 AS SCHE_NO
+			FROM CALENDAR
+			WHERE SUBSTR(sche_id, 6, 6) = TO_CHAR(SYSDATE, 'YYMMDD')
+		</selectKey>
+		INSERT INTO CALENDAR(SCHE_NO, SCHE_ID, SCHE_TYPE, SCHE_TITLE,
+						     SCHE_CONTENT, SCHE_START_DATE, SCHE_START_TIME,
+						     SCHE_END_DATE, SCHE_END_TIME, CREATE_YMD, CREATE_EMP,
+						     BACK_GROUND_COLOR, MEM_ID, ALL_DAY, ROOM_ID)
+		VALUES (#{scheNo}
+			   , #{scheId}
+			   , #{scheType}
+			   , #{scheTitle}
+			   , #{scheContent}
+			   , #{scheStartDate}
+			   , #{scheStartTime}
+			   , #{scheEndDate}
+			   , #{scheEndTime}
+			   , TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+			   , #{createEmp}
+			   , #{backGroundColor}
+			   , #{createEmp}
+			   , #{allDay}
+			   , #{roomId}
+			   )
+	</insert>
+	
+	
+	<insert id="createSchedule" parameterType="calendarVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="scheNo">
+			SELECT NVL(MAX(SCHE_NO),0)+1 AS SCHE_NO
+			FROM CALENDAR
+			WHERE SUBSTR(sche_id, 6, 6) = TO_CHAR(SYSDATE, 'YYMMDD')
+		</selectKey>
+		INSERT INTO CALENDAR(SCHE_NO, SCHE_ID, SCHE_TYPE, SCHE_TITLE,
+						     SCHE_CONTENT, SCHE_START_DATE, SCHE_START_TIME,
+						     SCHE_END_DATE, SCHE_END_TIME, CREATE_YMD, CREATE_EMP,
+						     BACK_GROUND_COLOR, MEM_ID, ALL_DAY)
+		VALUES (#{scheNo}
+			   , #{scheId}
+			   , #{scheType}
+			   , #{scheTitle}
+			   , #{scheContent}
+			   , #{scheStartDate}
+			   , #{scheStartTime}
+			   , #{scheEndDate}
+			   , #{scheEndTime}
+			   , TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+			   , #{createEmp}
+			   , #{backGroundColor}
+			   , #{createEmp}
+			   , #{allDay}
+			   )
+	</insert>
+	
+	<insert id="insertMember" parameterType="calendarVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="scheNo">
+			SELECT NVL(MAX(SCHE_NO),0)+1 AS SCHE_NO
+			FROM CALENDAR
+			WHERE SUBSTR(sche_id, 6, 6) = TO_CHAR(SYSDATE, 'YYMMDD')
+		</selectKey>
+		INSERT INTO CALENDAR(
+							 SCHE_NO
+						   , SCHE_ID
+						   , SCHE_TYPE
+						   , SCHE_TITLE
+						   , SCHE_CONTENT
+						   , SCHE_START_DATE
+						   , SCHE_START_TIME
+						   , SCHE_END_DATE
+						   , SCHE_END_TIME
+						   , CREATE_YMD
+						   , CREATE_EMP
+						   , MEM_ID
+						   , BACK_GROUND_COLOR
+						   , ALL_DAY
+							)
+		VALUES (#{scheNo}
+				, #{scheId}
+				, #{scheType}
+				, #{scheTitle}
+				, #{scheContent}
+				, #{scheStartDate}
+				, #{scheStartTime}
+				, #{scheEndDate}
+				, #{scheEndTime}
+				, TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+				, #{createEmp}
+				, #{memId}
+				, #{backGroundColor}
+				, #{allDay}
+				)
+	</insert>
+	
+	<insert id="insertMemberVideoChat" parameterType="calendarVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="scheNo">
+			SELECT NVL(MAX(SCHE_NO),0)+1 AS SCHE_NO
+			FROM CALENDAR
+			WHERE SUBSTR(sche_id, 6, 6) = TO_CHAR(SYSDATE, 'YYMMDD')
+		</selectKey>
+		INSERT INTO CALENDAR(
+							 SCHE_NO
+						   , SCHE_ID
+						   , SCHE_TYPE
+						   , SCHE_TITLE
+						   , SCHE_CONTENT
+						   , SCHE_START_DATE
+						   , SCHE_START_TIME
+						   , SCHE_END_DATE
+						   , SCHE_END_TIME
+						   , CREATE_YMD
+						   , CREATE_EMP
+						   , MEM_ID
+						   , BACK_GROUND_COLOR
+						   , ALL_DAY
+						   , ROOM_ID
+							)
+		VALUES (#{scheNo}
+				, #{scheId}
+				, #{scheType}
+				, #{scheTitle}
+				, #{scheContent}
+				, #{scheStartDate}
+				, #{scheStartTime}
+				, #{scheEndDate}
+				, #{scheEndTime}
+				, TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+				, #{createEmp}
+				, #{memId}
+				, #{backGroundColor}
+				, #{allDay}
+				, #{roomId}
+				)
+	</insert>
+
+	<update id="updateSchedule" parameterType="calendarVO">
+		UPDATE CALENDAR
+		SET SCHE_TITLE = #{scheTitle}
+			, SCHE_CONTENT = #{scheContent}
+			, SCHE_START_DATE = #{scheStartDate}
+			, SCHE_END_DATE = #{scheEndDate}
+			, SCHE_START_TIME = #{scheStartTime}
+			, SCHE_END_TIME = #{scheEndTime}
+			, MODIFY_DT = TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+			, MODIFY_EMP = #{createEmp}
+			, ALL_DAY = #{allDay}
+			, BACK_GROUND_COLOR = #{backGroundColor}
+		WHERE SCHE_ID = #{scheId}
+	</update>
+	
+	<insert id="updateMember" parameterType="calendarVO">				
+		UPDATE CALENDAR
+		SET SCHE_TITLE = #{scheTitle}
+			, SCHE_CONTENT = #{scheContent}
+			, SCHE_START_DATE = #{scheStartDate}
+			, SCHE_END_DATE = #{scheEndDate}
+			, SCHE_START_TIME = #{scheStartTime}
+			, SCHE_END_TIME = #{scheEndTime}
+			, MODIFY_DT = TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+			, MODIFY_EMP = #{createEmp}
+			, ALL_DAY = #{allDay}
+			, BACK_GROUND_COLOR = #{backGroundColor}
+		WHERE SCHE_ID = #{scheId}
+		AND MEM_ID = #{memId}
+	</insert>
+	
+	<delete id="deleteSchedule" parameterType="String">
+		DELETE FROM CALENDAR
+		WHERE SCHE_ID = #{scheId}
+	</delete>
+	
+		<select id="todayMySchedule" parameterType="String" resultType="calendarVO">
+		  <![CDATA[
+		 SELECT *
+		FROM (
+		  SELECT C.SCHE_NO
+		         , C.SCHE_ID
+		         , C.SCHE_TYPE
+		         , C.SCHE_TITLE
+		         , C.SCHE_CONTENT
+		         , C.SCHE_START_DATE
+		         , C.SCHE_START_TIME
+		         , C.SCHE_END_DATE
+		         , C.SCHE_END_TIME
+		         , C.CREATE_YMD
+		         , C.CREATE_EMP
+		         , C.MEM_ID AS SCHE_MEM_ID
+		         , C.FILE_GROUP_NO
+		         , C.ALL_DAY
+		         , C.BACK_GROUND_COLOR
+		         , C.ROOM_ID
+		         , V.MEM_ID AS VIDEO_CRAETE_MEM_ID
+		  FROM CALENDAR C
+		  LEFT OUTER JOIN VIDEO_CHAT V ON(C.ROOM_ID = V.ROOM_ID)
+		  WHERE C.MEM_ID = #{memId}
+		)
+		WHERE ROWNUM <= 5 
+		   ]]>
+	</select>
+	
+	
+</mapper>

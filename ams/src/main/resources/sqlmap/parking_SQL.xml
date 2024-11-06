@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.facility.mapper.ParkingMapper">
+
+	<insert id="regist">
+		SELECT NVL(MAX(PRK_RSVT_NO),0)+1 FROM PARKING_RSVT
+	</insert>
+
+
+	<insert id="registPost" parameterType="parkingRsvtVO">
+
+
+
+		<selectKey resultType="String" order="BEFORE"
+			keyProperty="prkRsvtNo">
+			SELECT NVL(MAX(PRK_RSVT_NO),0)+1 FROM PARKING_RSVT
+		</selectKey>
+		INSERT INTO PARKING_RSVT(PRK_RSVT_NO, PRK_LOT_AREA
+		,PRK_ENTVHCL_TM,
+		PRK_LVVHCL_TM, PRK_RSVT_CAR_TYPE,
+		PRK_RSVT_MOBLPHON,PRK_RSVT_PSWD,
+		PRK_RSVT_CAR_NO,PRK_RSVT_RTRCN_YN,
+		PRK_RSV_PAY_YN)
+		VALUES(#{prkRsvtNo},
+		#{prkLotArea},#{prkEntvhclTm}, #{prkLvvhclTm},
+		#{prkRsvtCarType},
+		#{prkRsvtMoblphon},#{prkRsvtPswd},#{prkRsvtCarNo},'N','Y')
+	</insert>
+	
+<!-- 	  <update id="update" parameterType="parkingRsvtVO"> -->
+<!-- 	  	UPDATE PARKING_RSVT -->
+<!-- 		SET PRK_RSVT_MOBLPHON = #{prkRsvtMoblphon} -->
+<!-- 		    , PRK_RSVT_CAR_NO = #{prkRsvtCarNo} -->
+<!-- 		    , PRK_ENTVHCL_TM = #{prkEntvhclTm} -->
+<!-- 		    , PRK_LVVHCL_TM = #{prkLvvhclTm} -->
+<!-- 		    , PRK_LOT_AREA = #{prkLotArea} -->
+<!-- 		    , PRK_RSVT_CAR_TYPE = #{prkRsvtCarType} -->
+<!-- 		    WHERE PRK_RSVT_NO = #{prkRsvtNo} -->
+<!-- 	  </update> -->
+
+	<select id="list" parameterType="String"
+		resultType="parkingRsvtVO">
+		SELECT
+		PRK_RSVT_NO,
+		PRK_RSVT_NM,
+		PRK_RSVT_MOBLPHON,
+		PRK_RSVT_PSWD,
+		PRK_RSVT_CAR_NO,
+		PRK_RSVT_CAR_TYPE,
+		PRK_RSVT_YMD,
+		PRK_ENTVHCL_TM,
+		PRK_LVVHCL_TM,
+		PRK_RSVT_RTRCN_YN,
+		PRK_RSV_PAY_YN,
+		PRK_LOT_AREA
+		FROM PARKING_RSVT
+		WHERE PRK_RSVT_MOBLPHON = #{phone}
+		AND PRK_RSVT_RTRCN_YN = 'N'
+	</select>
+	
+	<select id="detail" parameterType="String"
+		resultType="parkingRsvtVO">
+		SELECT
+		PRK_RSVT_NO,
+		PRK_RSVT_NM,
+		PRK_RSVT_MOBLPHON,
+		PRK_RSVT_PSWD,
+		PRK_RSVT_CAR_NO,
+		PRK_RSVT_CAR_TYPE,
+		PRK_RSVT_YMD,
+		PRK_ENTVHCL_TM,
+		PRK_LVVHCL_TM,
+		PRK_RSVT_RTRCN_YN,
+		PRK_RSV_PAY_YN,
+		PRK_LOT_AREA
+		FROM PARKING_RSVT
+		WHERE PRK_RSVT_NO = #{prkRsvtNo}
+	</select>
+
+
+
+
+	<!-- 개인별 리스트 말고 결제 후 화면 쿼리 개설 필요 -->
+
+
+
+	<update id="delete" parameterType="parkingRsvtVO">
+		UPDATE PARKING_RSVT
+		SET
+			PRK_RSVT_RTRCN_YN = 'Y'
+		WHERE
+		PRK_RSVT_NO = #{prkRsvtNo}
+	</update>
+
+<!-- 	<select id="detail" parameterType="String" -->
+<!-- 		resultType="parkingRsvtVO"> -->
+<!-- 		SELECT -->
+<!-- 		PRK_RSVT_NO, -->
+<!-- 		PRK_RSVT_NM, -->
+<!-- 		PRK_RSVT_MOBLPHON, -->
+<!-- 		PRK_RSVT_PSWD, -->
+<!-- 		PRK_RSVT_CAR_NO, -->
+<!-- 		PRK_RSVT_CAR_TYPE, -->
+<!-- 		PRK_RSVT_YMD, -->
+<!-- 		PRK_ENTVHCL_TM, -->
+<!-- 		PRK_LVVHCL_TM, -->
+<!-- 		PRK_RSVT_RTRCN_YN, -->
+<!-- 		PRK_RSV_PAY_YN, -->
+<!-- 		PRK_LOT_AREA -->
+<!-- 		FROM -->
+<!-- 		PARKING_RSVT -->
+<!-- 		WHERE -->
+<!-- 		PRK_RSVT_NO = #{prkRsvtNo} -->
+<!-- 	</select> -->
+
+	<update id="update" parameterType="parkingRsvtVO">
+		UPDATE PARKING_RSVT
+		SET
+		PRK_RSVT_CAR_NO = #{prkRsvtCarNo},
+		PRK_ENTVHCL_TM = #{prkEntvhclTm},
+		PRK_LVVHCL_TM = #{prkLvvhclTm}
+		WHERE PRK_RSVT_NO = #{prkRsvtNo}
+	</update>
+</mapper>

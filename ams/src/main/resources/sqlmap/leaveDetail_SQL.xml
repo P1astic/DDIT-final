@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.human.mapper.LeaveDetailMapper">
+
+	<insert id="leaveDetailInsert" parameterType="employeeVO">
+		INSERT INTO LEAVE_DETAIL(LV_DET_CD, ELEC_APV_NO, LV_BGNG_YMD, LV_END_YMD, LV_DET_TYPE, LV_DET_RSN, LV_USE_DAY)
+		VALUES((SELECT NVL(MAX(LV_DET_CD),0)+1
+  		  FROM LEAVE_DETAIL),#{elecApvNo},#{lvBgngYmd},#{lvEndYmd},#{lvDetType},#{lvDetRsn},#{lvUseDay})
+	</insert>
+	
+	<select id="leaveDetailList" resultType="leaveDetailVO">
+		SELECT LV_DET_CD, ELEC_APV_NO, TO_CHAR(TO_DATE(LV_BGNG_YMD),'YYYY-MM-DD') LV_BGNG_YMD
+				, TO_CHAR(TO_DATE(LV_END_YMD),'YYYY-MM-DD') LV_END_YMD, LV_DET_TYPE, LV_DET_RSN, LV_USE_DAY
+		  FROM LEAVE_DETAIL
+		 WHERE ELEC_APV_NO = #{elecApvNo}
+	</select>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.human.mapper.MypageMapper">
+
+
+	<!-- 인사정보 및 기본 내 정보 출력 내정보 Employee 사원명 직위 부서 입사일자 사원번호 ID 휴대전화 인사정보 MEMBER 
+		+ Employee 비밀번호 이메일 성별 생년월일 입사일 부서 최초발령일 주민번호는 안 쓰는 게 좋다고 해서 생략 기본 내정보에 있는 
+		건 인사정보에 굳이 두번 출력 안 함(사번 생략함) 다만 이메일 같은 경우는 수정의 여지가 있어 보여 표시함 -->
+
+	<!-- <select id="searchMember" parameterType="employeeVO" -->
+	<!-- resultType="employeeVO"> -->
+
+	<!-- SELECT -->
+	<!-- MEM_ID, -->
+	<!-- EMP_RRNO, -->
+	<!-- EMP_EML, -->
+	<!-- EMP_MOBLPHON, -->
+	<!-- EMP_ZIP, -->
+	<!-- EMP_ROAD_NM_ADDR, -->
+	<!-- EMP_DADDR, -->
+	<!-- EMP_IMG, -->
+	<!-- EMP_YRYC_DAYCNT, -->
+	<!-- EMP_HDOF_STAT, -->
+	<!-- EMP_JNCMP_YMD, -->
+	<!-- EMP_RSGNTN_YMD, -->
+	<!-- EMP_ATRZ_SGN, -->
+	<!-- EMP_NM -->
+	<!-- FROM EMPLOYEE -->
+	<!-- WHERE MEM_ID = -->
+	<!-- #{employeeVO.memId} -->
+	<!-- </select> -->
+
+
+	<!-- 사원 정보 -->
+	<select id="searchMember" parameterType="String"
+		resultType="employeeVO">
+
+		SELECT
+		E.MEM_ID,
+		E.EMP_RRNO,
+		E.EMP_EML,
+		E.EMP_MOBLPHON,
+		E.EMP_ZIP,
+		E.EMP_ROAD_NM_ADDR,
+		E.EMP_DADDR,
+		E.EMP_IMG_URL,
+		E.EMP_IMG_NM,
+		E.EMP_YRYC_DAYCNT,
+		E.EMP_HDOF_STAT,
+		E.EMP_JNCMP_YMD,
+		E.EMP_RSGNTN_YMD,
+		E.EMP_ATRZ_SGN,
+		E.EMP_NM,
+		E.JBGD_CD,
+		E.DEPT_CD,
+		E.EMP_GENDER,
+		M.PASSWORD
+
+		FROM EMPLOYEE E
+		LEFT OUTER JOIN MEMBER M ON(E.MEM_ID = M.MEM_ID)
+		WHERE
+		E.MEM_ID =
+		#{memId}
+	</select>
+
+	<!-- 협력사 정보 -->
+	<select id="searchBp" parameterType="String" resultType="bpVO">
+
+		SELECT
+		B.MEM_ID,
+		B.BP_NM,
+		B.BP_RPRSV_NM,
+		B.BP_TELNO,
+		B.BP_BRNO,
+		B.CTRT_YMD,
+		B.CTRT_END_YMD,
+		B.BP_IMG_URL,
+		B.BP_IMG_NM,
+		B.BP_EML,
+		B.DEPT_CD,
+		M.PASSWORD
+		FROM BP B
+		LEFT OUTER JOIN MEMBER M ON(B.MEM_ID = M.MEM_ID)
+		WHERE
+		B.MEM_ID =
+		#{memId}
+	</select>
+
+	<select id="getJbgdNm" parameterType="String" resultType="jobGradeVO">
+		SELECT JBGD_NM, JBGD_EN_NM
+		  FROM JOB_GRADE
+		 WHERE JBGD_CD = #{jbgdCd}
+	</select>  
+	
+	<select id="getDeptNm" parameterType="String" resultType="String">
+		SELECT DEPT_NM
+		  FROM DEPARTMENT
+		 WHERE DEPT_CD = #{deptCd}
+	</select>
+
+	<select id="getGenderNm" parameterType="String" resultType="String">
+		SELECT COM_DET_CD_CN
+		  FROM COMMON_CODE_DETAIL
+		 WHERE COM_DET_CD = #{genderCd}
+	</select>
+	
+	<select id="getFrnSeCdNm" parameterType="String" resultType="String">
+		SELECT COM_DET_CD_CN
+		  FROM COMMON_CODE_DETAIL
+		 WHERE COM_DET_CD = (SELECT FRN_SE_CD
+		  					   FROM FRANCHISE
+							  WHERE MEM_ID = #{memId})
+	</select>
+	
+	<resultMap type="employeeVO" id="infoMap">
+		<result property="memId" column="MEM_ID" />
+		<result property="empNm" column="EMP_NM" />
+		<result property="empRrno" column="EMP_RRNO" />
+		<result property="empEml" column="EMP_EML" />
+		<result property="empMoblphon" column="EMP_MOBLPHON" />
+		<result property="empZip" column="EMP_ZIP" />
+		<result property="empRoadNmAddr" column="EMP_ROAD_NM_ADDR" />
+		<result property="empDaddr" column="EMP_DADDR" />
+		<result property="empImgNm" column="EMP_IMG_NM" />
+		<result property="empImgUrl" column="EMP_IMG_URL" />
+		<result property="empYrycDaycnt" column="EMP_YRYC_DAYCNT" />
+		<result property="empHdofStat" column="EMP_HDOF_STAT" />
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD" />
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD" />
+		<result property="empAtrzSgn" column="EMP_ATRZ_SGN" />
+		<result property="memId" column="MEM_ID" />
+		<result property="password" column="PASSWORD" />
+		<result property="enabled" column="ENABLED" />
+		<collection property="memberVOList"
+			resultMap="memberInfoMap">
+		</collection>
+	</resultMap>
+
+	<update id="update" parameterType="employeeVO">
+		UPDATE EMPLOYEE
+		   SET EMP_ROAD_NM_ADDR = #{empRoadNmAddr}
+			   , EMP_DADDR = #{empDaddr}
+			   , EMP_ZIP = #{empZip}
+			   , EMP_EML = #{empEml}
+			   , EMP_MOBLPHON = #{empMoblphon}
+		 WHERE MEM_ID = #{memId}
+	</update>
+
+	<update id="updatePassword" parameterType="employeeVO">
+		UPDATE MEMBER
+		SET	PASSWORD = #{password}
+		WHERE MEM_ID = #{memId}
+	</update>
+
+	<select id="passwordCheck" parameterType="memberVO"
+		resultType="memberVO">
+		SELECT *
+		FROM MEMBER
+		WHERE MEM_ID = #{memId}
+		AND PASSWORD = #{password}
+	</select>
+
+	<!-- 협력사 수정 -->
+	<update id="updateBp" parameterType="bpVO">
+		UPDATE BP
+		SET BP_TELNO = #{bpTelno}
+		    , BP_EML = #{bpEml}
+		WHERE MEM_ID = #{memId}
+	</update>
+
+	<!-- MEMBER 테이블의 password 컬럼의 값을 수정 * EmployeeVO(memId=admin1, empNm=null, 
+		empRrno=19970101, empEml=a001@naver.com, empMoblphon=01090590210, empZip=null 
+		* , empRoadNmAddr=대전광역시 중구 계룡로 846, empDaddr=1호, empImgUrl=null, empImgNm=null, 
+		empYrycDaycnt=0, empHdofStat=null * , empJncmpYmd=null, empRsgntnYmd=, empAtrzSgn=null, 
+		jbgdCd=null, deptCd=null, empGender=null, apvId=null, airNm=null * , elecApvCn=null, 
+		deptNm=null, jbgdNm=null, jobGrade=null, department=null, auth=null, password=1234, 
+		enabled=null * , rnum=null, memberVO=null, commonCodeDetailVO=null)) -->
+	<update id="updatePasswordBp" parameterType="bpVO">
+		UPDATE MEMBER
+		SET
+		PASSWORD = #{password}
+		WHERE MEM_ID = #{memId}
+	</update>
+
+
+
+
+</mapper>

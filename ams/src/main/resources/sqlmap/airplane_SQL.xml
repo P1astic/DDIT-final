@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.airplane.mapper.AirplaneMapper">
+	
+	<select id="getNationName" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD, COM_CD_GROUP, COM_DET_CD_NM, COM_DET_CD_CN
+		FROM COMMON_CODE_DETAIL
+		WHERE COM_CD_GROUP = 'P'
+	</select>
+	
+	<select id="getAirLineName" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD, COM_CD_GROUP, COM_DET_CD_NM, COM_DET_CD_CN
+		FROM COMMON_CODE_DETAIL
+		WHERE COM_CD_GROUP = 'Q'
+	</select>
+	
+	<select id="getAirLines" resultType="airLineVO">
+		SELECT MEM_ID, AIR_COUNTER, AIR_GATE, AIR_NTNLTY_NM, AIR_IATA, AIR_ICAO, AIR_URL, AIR_IMG, AIR_KR_NM
+		FROM AIRLINE
+	</select>
+</mapper>

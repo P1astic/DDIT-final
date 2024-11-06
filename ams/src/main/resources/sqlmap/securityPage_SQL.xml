@@ -1,0 +1,522 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.facility.mapper.SecurityPageMapper">
+
+	<sql id="start">
+		select * from(
+	</sql>
+	
+	<sql id="end">
+	)
+	 WHERE RNUM BETWEEN(#{currentPage} * 10) - (10 - 1) AND (#{currentPage} * 10)
+	</sql>
+	
+	<!-- 업체 리스트 -->
+	<select id="companyList" resultType="SecurityCompanyVO"
+		parameterType="SecurityCompanyVO">
+		
+		SELECT FAC_ID, EMP_NAME, EXP_NAME, EMP_TEL1, EMP_TEL2, EMP_TEL3, EMP_ADD1,
+		EMP_ADD2
+		FROM SECURITY_COMPANY
+		
+	</select>
+
+	<!-- 시설리스트 -->
+	<select id="facilityList" resultType="SecurityFacilityVO"
+        parameterType="SecurityFacilityVO">
+    <include refid="start"></include>
+    SELECT MODIFY_DT, SECURITY_FAC_NAME, CHECKLIST_NAME, SECURITY_FAC_CD,
+           LATEST_INSPECTION_DT, TOTAL_CUM_CHECK, CHECKED_OR_NOT,
+           ROW_NUMBER() OVER (ORDER BY SECURITY_FAC_CD DESC) AS RNUM
+    FROM SECURITY_FACILITY
+    <include refid="end"></include>
+</select>
+	
+	<select id="getTotal" resultType="int" parameterType="SecurityFacilityVO">
+		SELECT COUNT(*)
+			FROM SECURITY_FACILITY
+			WHERE 1 = 1
+	</select>
+
+	<!-- 업체 등록 -->
+<insert id="registFrom" parameterType="SecurityCompanyVO">
+    <selectKey resultType="String" order="BEFORE" keyProperty="facId">
+        SELECT 'ktt' || LPAD(SEQ_FAC_ID.NEXTVAL, 2, '0') AS facId FROM DUAL
+    </selectKey>
+    INSERT INTO SECURITY_COMPANY (
+        FAC_ID, MEM_ID, EMP_NAME, EXP_NAME, EMP_PASS, EMP_TEL1, EMP_TEL2, EMP_TEL3,
+        EMP_ADD1, EMP_ADD2, CREATE_DT
+    ) VALUES (
+        #{facId}, #{memId}, #{empName}, #{expName}, #{empPass}, 
+        #{empTel1}, #{empTel2}, #{empTel3}, 
+        #{empAdd1}, #{empAdd2}, SYSDATE
+    )
+</insert>
+
+
+<select id="getChecklistItems" resultType="String">
+		    SELECT CHECK_ITEMS1 FROM SECURITY_CHECKLIST WHERE CHECKLIST_SEQ = #{checklistSeq}
+		UNION ALL
+		SELECT CHECK_ITEMS2 FROM SECURITY_CHECKLIST WHERE CHECKLIST_SEQ = #{checklistSeq}
+		UNION ALL
+		SELECT CHECK_ITEMS3 FROM SECURITY_CHECKLIST WHERE CHECKLIST_SEQ = #{checklistSeq}
+		UNION ALL
+		SELECT CHECK_ITEMS4 FROM SECURITY_CHECKLIST WHERE CHECKLIST_SEQ = #{checklistSeq}
+		UNION ALL
+		SELECT CHECK_ITEMS5 FROM SECURITY_CHECKLIST WHERE CHECKLIST_SEQ = #{checklistSeq}
+</select>
+
+
+    
+		<select id="countByFacilityName" resultType="int">
+		    SELECT COUNT(*) FROM SECURITY_FACILITY WHERE SECURITY_FAC_NAME = #{facilityName}
+		</select>
+	<!-- 시설 등록 -->	
+	 <!-- 중복 체크를 위한 SELECT 문 -->
+    <select id="checkIfExists" resultType="int">
+        SELECT COUNT(*)
+        FROM SECURITY_FACILITY
+        WHERE SECURITY_FAC_NAME = #{securityFacName}
+    </select>
+	
+<insert id="secCompanyRegistFrom" parameterType="SecurityFacilityVO">
+    <selectKey resultType="String" order="BEFORE" keyProperty="securityFacCd">
+        SELECT 'FAC_CD_' || LPAD(SECURITY_FACILITY_SEQ.NEXTVAL, 3, '0') 
+        FROM DUAL
+    </selectKey>
+    INSERT INTO SECURITY_FACILITY (
+        PARTICULARS,
+        SECURITY_FAC_CD,
+        SECURITY_FAC_NAME,
+        SECURITY_SEQ,
+        CHECKLIST_NAME,
+        CREATE_DT,
+        CHECK_ITEMS1, 
+        CHECK_ITEMS2, 
+        CHECK_ITEMS3, 
+        CHECK_ITEMS4, 
+        CHECK_ITEMS5
+    )
+    VALUES (
+        #{particulars, jdbcType=VARCHAR},
+        #{securityFacCd, jdbcType=VARCHAR},
+        #{securityFacName, jdbcType=VARCHAR},
+        #{securitySeq, jdbcType=INTEGER},
+        (SELECT NVL((SELECT CHECKLIST_NAME 
+                     FROM SECURITY_CHECKLIST 
+                     WHERE CHECKLIST_SEQ = #{checklistSeq, jdbcType=VARCHAR}), '기본값') 
+         FROM DUAL),
+        SYSDATE,
+        #{checkItems1, jdbcType=VARCHAR},
+        <if test="checkItems2 != null">
+            #{checkItems2, jdbcType=VARCHAR}
+        </if>
+        <if test="checkItems2 == null">
+            null
+        </if>,
+        <if test="checkItems3 != null">
+            #{checkItems3, jdbcType=VARCHAR}
+        </if>
+        <if test="checkItems3 == null">
+            null
+        </if>,
+        <if test="checkItems4 != null">
+            #{checkItems4, jdbcType=VARCHAR}
+        </if>
+        <if test="checkItems4 == null">
+            null
+        </if>,
+        <if test="checkItems5 != null">
+            #{checkItems5, jdbcType=VARCHAR}
+        </if>
+        <if test="checkItems5 == null">
+            null
+        </if>
+    )
+</insert>
+	
+
+
+	<!-- 업체 상세정보 -->
+<select id="detail" resultType="SecurityCompanyVO" parameterType="String">
+    SELECT FAC_ID, EMP_NAME, EXP_NAME, EMP_TEL1, EMP_TEL2, EMP_TEL3, EMP_ADD1,
+           EMP_ADD2, EMP_PASS  
+    FROM SECURITY_COMPANY
+    WHERE FAC_ID = #{facId}
+</select>
+
+	<!-- 시설 상세정보 -->
+	<select id="secCompanyDetail" resultType="SecurityFacilityVO"
+		parameterType="String">
+		SELECT FAC_ID, EMP_NAME, EXP_NAME, EMP_TEL1, EMP_TEL2, EMP_TEL3, EMP_ADD1,
+		EMP_ADD2
+		FROM SECURITY_COMPANY
+		WHERE FAC_ID = #{facId}
+	</select>
+
+	<!-- 업체 수정 -->
+	<update id="editPost" parameterType="SecurityCompanyVO">
+		UPDATE SECURITY_COMPANY
+		SET EMP_NAME = #{empName}, EXP_NAME = #{expName}, EMP_TEL1 = #{empTel1},
+		EMP_TEL2 = #{empTel2}, EMP_TEL3 = #{empTel3},
+		EMP_ADD1 = #{empAdd1}, EMP_ADD2 = #{empAdd2}, MODIFY_DT = SYSDATE
+		WHERE FAC_ID = #{facId}
+	</update>
+
+	<!-- 업체 삭제 -->
+	<delete id="delete" parameterType="String">
+		DELETE FROM SECURITY_COMPANY WHERE FAC_ID = #{facId}
+	</delete>
+
+	<!-- 업체의 정보 찾기 -->
+			<select id="findByEmpName" resultType="SecurityCompanyVO">
+			    SELECT * FROM SECURITY_COMPANY
+			    WHERE EMP_NAME = #{empName}
+			</select>
+
+	<!-- **********************************************시설,업체 끝******************************************************************* -->
+
+	<!-- **********************************************작업자(근무자)시작*************************************************************** -->
+
+	<select id="secworker" resultType="SecurityWorkerVO" parameterType="SecurityWorkerVO">
+		SELECT *
+		FROM SECURITY_WORKER
+	</select>
+
+	<!-- 작업자(근무자)리스트 -->
+	<select id="secWorkerList" resultType="SecurityWorkerVO" parameterType="SecurityWorkerVO">
+    <include refid="start"></include>
+    SELECT
+        w.MEM_SEQ,
+        w.WORKER_NAME,
+        w.MEM_TEL1,
+        w.MEM_TEL2,
+        w.MEM_TEL3,
+        w.MEMO,
+        w.MAIL,
+        w.MEM_ADD1,
+        w.MEM_ADD2,
+        c.EMP_NAME,
+        ROW_NUMBER() OVER (ORDER BY w.CREATE_DT DESC) AS RNUM
+    FROM
+        SECURITY_WORKER w
+    JOIN
+        SECURITY_COMPANY c ON w.FAC_ID = c.FAC_ID
+    <include refid="end"></include>
+</select>
+
+	<!-- 작업자 등록 -->
+	<insert id="secWorkerRegistFrom"
+		parameterType="SecurityWorkerVO">
+		<selectKey resultType="String" order="BEFORE"
+			keyProperty="memSeq">
+			SELECT 'MEM_' || LPAD(NVL(MAX(TO_NUMBER(SUBSTR(MEM_SEQ, 5))), 0) + 1, 3,
+			'0')
+			FROM SECURITY_WORKER
+			WHERE REGEXP_LIKE(MEM_SEQ, '^MEM_[0-9]{3}$')
+		</selectKey>
+		INSERT INTO SECURITY_WORKER (
+		MEM_SEQ,
+		WORKER_NAME,
+		MEM_TEL1,
+		MEM_TEL2,
+		MEM_TEL3,
+		MEM_ADD1,
+		MEM_ADD2,
+		MEMO,
+		MAIL,
+		CREATE_DT,
+		FILEGROUPNO,
+		FAC_ID
+		) VALUES (
+		#{memSeq},
+		#{workerName},
+		#{memTel1},
+		#{memTel2},
+		#{memTel3},
+		#{memAdd1},
+		#{memAdd2},
+		#{memo},
+		#{mail},
+		SYSDATE,
+		#{fileGroupNo},
+		#{facId}
+		)
+	</insert>
+
+	<select id="fileList" parameterType="long"
+		resultType="FileDetailVO">
+		SELECT FILE_SN,
+		FILE_GROUP_NO, FILE_ORGNL_FILE_NM, FILE_STRG_FILE_NM,
+		FILE_FILE_PATH_NM, FILE_SZ, FILE_FILE_EXTN_NM, FILE_MIME,
+		FILE_FANCYSIZE, FILE_FILE_STRG_YMD, FILE_DWNLD_CNT
+		FROM FILE_DETAIL
+		WHERE FILE_GROUP_NO = #{fileGroupNo}
+	</select>
+
+	<!-- 작업자 상세정보 -->
+	<select id="secWorkerDetail" resultType="SecurityWorkerVO"
+		parameterType="String">
+		SELECT
+		MEM_SEQ,
+		WORKER_NAME,
+		MEM_TEL1,
+		MEM_TEL2,
+		MEM_TEL3,
+		MAIL,
+		MEMO,
+		'KTTELECOP' AS FAC_ID,
+		FILEGROUPNO,
+		MEM_ADD1,
+		MEM_ADD2
+		FROM SECURITY_WORKER
+		WHERE MEM_SEQ = #{memSeq}
+	</select>
+
+<update id="secWorkeEditFrom" parameterType="SecurityWorkerVO">
+    UPDATE SECURITY_WORKER
+    SET
+    WORKER_NAME = #{workerName},
+    MEM_TEL1 = #{memTel1},
+    MEM_TEL2 = #{memTel2},
+    MEM_TEL3 = #{memTel3},
+    MAIL = #{mail},
+    MEMO = #{memo},
+    MODIFY_DT = SYSDATE,
+    MEM_ADD1 = #{memAdd1},
+    MEM_ADD2 = #{memAdd2}
+    <if test="fileGroupNo != null and fileGroupNo != 0">
+        , FILEGROUPNO = #{fileGroupNo}
+    </if>
+    WHERE MEM_SEQ = #{memSeq}
+</update>
+
+
+	<delete id="secWorkerDelete" parameterType="String">
+		DELETE FROM SECURITY_WORKER WHERE MEM_SEQ = #{memSeq}
+	</delete>
+
+	<delete id="deleteFile" parameterType="long">
+		DELETE FROM FILE_DETAIL
+		WHERE FILE_GROUP_NO = #{fileGroupNo}
+	</delete>
+
+	<!-- **********************************************작업자(근무자)끝*************************************************************** -->
+
+	<!-- **********************************************점검표 시작*************************************************************** -->
+
+	
+	<select id="secListVOList" resultType="SecurityChecklistVO" parameterType="SecurityChecklistVO">
+    
+        SELECT 
+            CHECKLIST_SEQ,
+            CHECKLIST_NAME,
+            CHECK_FREQUENCY,
+            CHECK_ITEMS1,
+            CHECK_ITEMS2,
+            CHECK_ITEMS3,
+            CHECK_ITEMS4,
+            CHECK_ITEMS5,
+            CREATE_DT,
+            NUM_FACILITIES
+    
+            
+        FROM 
+            SECURITY_CHECKLIST
+</select>
+
+
+	<!-- 점검표 리스트 -->
+<select id="secCheckList" resultType="SecurityChecklistVO" parameterType="Map">
+    <include refid="start"></include>
+    SELECT * FROM (
+        SELECT 
+            CHECKLIST_SEQ,
+            CHECKLIST_NAME,
+            CHECK_FREQUENCY,
+            NUM_FACILITIES,
+            CHECK_ITEMS1,
+            CHECK_ITEMS2,
+            CHECK_ITEMS3,
+            CHECK_ITEMS4,
+            CHECK_ITEMS5,
+            CREATE_DT,
+            (SELECT COUNT(*) FROM FACILITY WHERE CHECKLIST_SEQ = SECURITY_CHECKLIST.CHECKLIST_SEQ) AS numFacilities,
+            ROW_NUMBER() OVER (ORDER BY CHECKLIST_NAME) AS RNUM  
+        FROM 
+            SECURITY_CHECKLIST
+    )
+    <include refid="end"></include>
+</select>
+
+
+
+
+	<insert id="secCheckListRegistFrom" parameterType="SecurityChecklistVO">
+    <selectKey resultType="String" order="BEFORE" keyProperty="checklistSeq">
+        SELECT 'CHCK_SEQ_' || LPAD(CHECKLIST_SEQ_SEQ.NEXTVAL, 3, '0') FROM dual
+    </selectKey>
+    
+    INSERT INTO SECURITY_CHECKLIST (
+        CHECKLIST_SEQ,
+        CHECKLIST_NAME,
+        CREATE_DT,
+        EMP_NAME,
+        CHECK_FREQUENCY,
+        CHECK_ITEMS1,
+        CHECK_ITEMS2,
+        CHECK_ITEMS3,
+        CHECK_ITEMS4,
+        CHECK_ITEMS5
+    ) VALUES (
+        #{checklistSeq},
+        #{checklistName},
+        SYSDATE,
+        #{empName},
+        #{checkFrequency},
+        #{checkItems1},
+        <if test="checkItems2 != null">#{checkItems2}</if>
+        <if test="checkItems2 == null">null</if>,
+        <if test="checkItems3 != null">#{checkItems3}</if>
+        <if test="checkItems3 == null">null</if>,
+        <if test="checkItems4 != null">#{checkItems4}</if>
+        <if test="checkItems4 == null">null</if>,
+        <if test="checkItems5 != null">#{checkItems5}</if>
+        <if test="checkItems5 == null">null</if>
+    )
+</insert>
+
+
+
+	<!-- 점검표 상세 -->
+	<select id="secCheckListDetail" resultType="SecurityChecklistVO"
+		parameterType="String">
+		SELECT CHECKLIST_SEQ,
+		CHECKLIST_NAME,
+		EMP_NAME,
+		CHECK_FREQUENCY,
+		CHECK_ITEMS1,
+		CHECK_ITEMS2,
+		CHECK_ITEMS3,
+		CHECK_ITEMS4,
+		CHECK_ITEMS5,
+		CREATE_DT,
+		MODIFY_DT
+		FROM SECURITY_CHECKLIST 
+		WHERE CHECKLIST_SEQ = #{checklistSeq}
+	</select>
+
+
+	<update id="secCheckListEditFrom"
+		parameterType="SecurityChecklistVO">
+		UPDATE SECURITY_CHECKLIST
+		SET
+		CHECKLIST_NAME = #{checklistName},
+		MODIFY_DT = SYSDATE,
+		CHECK_ITEMS1 = CASE WHEN #{checkItems1, jdbcType=VARCHAR} IS NOT NULL THEN
+		#{checkItems1, jdbcType=VARCHAR} ELSE NULL END,
+		CHECK_ITEMS2 = CASE WHEN #{checkItems2, jdbcType=VARCHAR} IS NOT NULL THEN
+		#{checkItems2, jdbcType=VARCHAR} ELSE NULL END,
+		CHECK_ITEMS3 = CASE WHEN #{checkItems3, jdbcType=VARCHAR} IS NOT NULL THEN
+		#{checkItems3, jdbcType=VARCHAR} ELSE NULL END,
+		CHECK_ITEMS4 = CASE WHEN #{checkItems4, jdbcType=VARCHAR} IS NOT NULL THEN
+		#{checkItems4, jdbcType=VARCHAR} ELSE NULL END,
+		CHECK_ITEMS5 = CASE WHEN #{checkItems5, jdbcType=VARCHAR} IS NOT NULL THEN
+		#{checkItems5, jdbcType=VARCHAR} ELSE NULL END,
+		CHECK_FREQUENCY = CASE WHEN #{checkFrequency, jdbcType=VARCHAR} IS NOT NULL THEN
+		#{checkFrequency, jdbcType=VARCHAR} ELSE NULL END
+		WHERE CHECKLIST_SEQ = #{checklistSeq, jdbcType=VARCHAR}
+	</update>
+
+
+	<delete id="secCheckListDelete" parameterType="String">
+		DELETE FROM SECURITY_CHECKLIST WHERE CHECKLIST_SEQ = #{checklistSeq}
+	</delete>
+<!-- **********************************************점검표 끝*************************************************************** -->
+
+
+
+
+<!-- **********************************************점검도는 거 시작*************************************************************** -->
+	<select id="SecurityPatrol" resultType="SecurityCheckResultsVO">
+	SELECT *
+	FROM SECURITY_CHECK_RESULTS
+	</select>
+	
+	
+
+
+<insert id="SecurityPatrolFrom" parameterType="SecurityCheckResultsVO">
+    <!-- FAC_CD 자동 생성 -->
+    <selectKey keyProperty="facCd" resultType="string" order="BEFORE">
+        SELECT 'FAC_' || LPAD(FACILITY_CD_SEQ.NEXTVAL, 2, '0') FROM DUAL
+    </selectKey>
+    
+    INSERT INTO SECURITY_CHECK_RESULTS (
+        FAC_CD, 
+        WORKER_NAME, 
+        INSPECTION_TIME, 
+        INSPECTION_ITEMS1,
+        INSPECTION_ITEMS2,
+		INSPECTION_ITEMS3,
+		INSPECTION_ITEMS4,
+		INSPECTION_ITEMS5,
+        INSPECTION_MEMO,  
+        CREATE_DT 
+    ) VALUES (
+        #{facCd}, 
+        #{workerName},  
+        SYSDATE, 
+        <if test="inspectionItems1 != null">#{inspectionItems1},</if>
+        <if test="inspectionItems1 == null">NULL,</if>
+        <if test="inspectionItems2 != null">#{inspectionItems2},</if>
+        <if test="inspectionItems2 == null">NULL,</if>
+        <if test="inspectionItems3 != null">#{inspectionItems3},</if>
+        <if test="inspectionItems3 == null">NULL,</if>
+        <if test="inspectionItems4 != null">#{inspectionItems4},</if>
+        <if test="inspectionItems4 == null">NULL,</if>
+        <if test="inspectionItems5 != null">#{inspectionItems5},</if>
+        <if test="inspectionItems5 == null">NULL,</if>
+        #{inspectionMemo},   
+        SYSDATE
+    )
+</insert>
+	
+	<delete id="SecurityPatrolDelete" parameterType="String">
+	DELETE 
+	FROM SECURITY_FACILITY 
+	WHERE SECURITY_FAC_CD = #{securityFacCd}
+	</delete>
+
+  <select id="getInspectionItems" parameterType="String" resultType="SecurityFacilityVO">
+        SELECT CHECK_ITEMS1, CHECK_ITEMS2, CHECK_ITEMS3, CHECK_ITEMS4, CHECK_ITEMS5,SECURITY_FAC_CD
+        FROM SECURITY_FACILITY
+        WHERE SECURITY_FAC_CD = #{securityFacCd}
+    </select>	
+    
+    
+ <update id="updateLatestInspectionDt">
+        UPDATE SECURITY_FACILITY
+        SET LATEST_INSPECTION_DT = #{latestInspectionDt}
+        WHERE SECURITY_FAC_CD = #{securityFacCd}
+    </update>
+
+<update id="TotalCumCheck" parameterType="SecurityCheckResultsVO">
+		UPDATE SECURITY_FACILITY
+		SET TOTAL_CUM_CHECK =(SELECT MAX(TOTAL_CUM_CHECK)+1 from SECURITY_FACILITY WHERE SECURITY_FAC_CD = #{securityFacCd})
+		WHERE SECURITY_FAC_CD = #{securityFacCd}
+	</update>
+	
+	<!-- 점검표 시설수 올리기 -->
+<update id="numFacilities" parameterType="SecurityCompanyVO">
+		UPDATE SECURITY_CHECKLIST
+		SET NUM_FACILITIES =(SELECT MAX(NUM_FACILITIES)+1 from SECURITY_CHECKLIST WHERE CHECKLIST_SEQ = #{checklistSeq})
+		 WHERE CHECKLIST_SEQ = #{checklistSeq}
+	</update>
+
+
+<!-- **********************************************점검도는 거 끝*************************************************************** -->
+
+</mapper>

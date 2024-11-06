@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.human.mapper.SalaryMapper">
+
+	<resultMap type="salaryVO" id="salaryMap">
+		<result property="salaryDate" column="SALARY_DATE"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="family" column="FAMILY"/>
+		<result property="overtime" column="OVERTIME"/>
+		<result property="night" column="NIGHT"/>
+		<result property="holiday" column="HOLIDAY"/>
+		<result property="dayoff" column="DAYOFF"/>
+		<result property="jobgrade" column="JOBGRADE"/>
+		<result property="workday" column="WORKDAY"/>
+		<result property="hourWage" column="HOUR_WAGE"/>
+		<result property="dayWage" column="DAY_WAGE"/>
+		<result property="monthWage" column="MONTH_WAGE"/>
+		<result property="salaryTax" column="SALARY_TAX"/>
+		<result property="salaryBslry" column="SALARY_BSLRY"/>
+		<result property="pension" column="PENSION"/>
+		<result property="health" column="HEALTH"/>
+		<result property="employee" column="EMPLOYEE"/>
+		<result property="incomeTax" column="INCOME_TAX"/>
+		<result property="workhour" column="WORKHOUR"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="totalWage" column="TOTAL_WAGE"/>
+		<result property="sumWage" column="SUM_WAGE"/>
+		<association property="employeeVO" resultMap="employeeMap"/>
+		<association property="deptVO" resultMap="deptMap"/>
+		<association property="jobGradeVO" resultMap="jobGradeMap"/>
+	</resultMap>
+	
+	<resultMap type="employeeVO" id="employeeMap">
+		<result property="empImgNm" column="EMP_IMG_NM"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empRrno" column="EMP_RRNO"/>
+		<result property="empEml" column="EMP_EML"/>
+		<result property="empMoblphon" column="EMP_MOBLPHON"/>
+		<result property="empZip" column="EMP_ZIP"/>
+		<result property="empRoadNmAddr" column="EMP_ROAD_NM_ADDR"/>
+		<result property="empDaddr" column="EMP_DADDR"/>
+		<result property="empImgUrl" column="EMP_IMG_URL"/>
+		<result property="empYrycDaycnt" column="EMP_YRYC_DAYCNT"/>
+		<result property="empHdofStat" column="EMP_HDOF_STAT"/>
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD"/>
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD"/>
+		<result property="empAtrzSgn" column="EMP_ATRZ_SGN"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="empGender" column="EMP_GENDER"/>
+	</resultMap>
+	
+	<resultMap type="deptVO" id="deptMap">
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="deptNm" column="DEPT_NM"/>
+	</resultMap>
+	
+	<resultMap type="jobGradeVO" id="jobGradeMap">
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="jbgdNm" column="JBGD_NM"/>
+	</resultMap>
+	
+	<select id="paystubList" parameterType="hashMap" resultMap="salaryMap">
+		WITH T AS(
+			SELECT
+				SA.SALARY_DATE,
+				SA.MEM_ID,
+				SA.FAMILY,
+				SA.OVERTIME,
+				SA.NIGHT,
+				SA.HOLIDAY,
+				SA.DAYOFF,
+				SA.JOBGRADE,
+				SA.WORKDAY,
+				SA.HOUR_WAGE,
+				SA.DAY_WAGE,
+				SA.MONTH_WAGE,
+				SA.SALARY_TAX,
+				SA.SALARY_BSLRY,
+				SA.PENSION,
+				SA.HEALTH,
+				SA.EMPLOYEE,
+				SA.INCOME_TAX,
+				SA.WORKHOUR,
+				SA.FILE_GROUP_NO,
+				SA.TOTAL_WAGE,
+				SA.SUM_WAGE,
+				EM.EMP_NM,
+				EM.EMP_EML,
+				DE.DEPT_NM,
+				JO.JBGD_NM,
+				ROW_NUMBER() OVER (ORDER BY SALARY_DATE DESC) AS RNUM
+			FROM SALARY SA
+			JOIN
+				EMPLOYEE EM ON SA.MEM_ID = EM.MEM_ID
+			JOIN
+				DEPARTMENT DE ON EM.DEPT_CD = DE.DEPT_CD
+			JOIN
+				JOB_GRADE JO ON EM.JBGD_CD = JO.JBGD_CD
+			WHERE 1 = 1
+			<if test="searchFilter != null and searchFilter != ''">
+				<choose>
+					<when test="searchFilter == 'EMP_NM'">
+						AND EMP_NM LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<when test="searchFilter == 'DEPT_NM'">
+						AND DEPT_NM LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<when test="searchFilter == 'JBGD_NM'">
+						AND JBGD_NM LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<when test="searchFilter == 'SALARY_DATE'">
+						AND SALARY_DATE LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<otherwise>
+						AND (EMP_NM LIKE '%' || #{tableSearch} || '%'
+						OR DEPT_NM LIKE '%' || #{tableSearch} || '%'
+						OR JBGD_NM LIKE '%' || #{tableSearch} || '%'
+						OR SALARY_DATE LIKE '%' || #{tableSearch} || '%')
+					</otherwise>
+				</choose>
+			</if>
+		)
+		SELECT * FROM T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)
+	</select>
+	
+	<select id="getpaystubTotal" parameterType="hashMap" resultType="int">
+			SELECT
+				COUNT(*)
+			FROM SALARY SA
+			JOIN
+				EMPLOYEE EM ON SA.MEM_ID = EM.MEM_ID
+			JOIN
+				DEPARTMENT DE ON EM.DEPT_CD = DE.DEPT_CD
+			JOIN
+				JOB_GRADE JO ON EM.JBGD_CD = JO.JBGD_CD
+			WHERE 1 = 1
+			<if test="searchFilter != null and searchFilter != ''">
+				<choose>
+					<when test="searchFilter == 'EMP_NM'">
+						AND EMP_NM LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<when test="searchFilter == 'DEPT_NM'">
+						AND DEPT_NM LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<when test="searchFilter == 'JBGD_NM'">
+						AND JBGD_NM LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<when test="searchFilter == 'SALARY_DATE'">
+						AND SALARY_DATE LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<otherwise>
+						AND (EMP_NM LIKE '%' || #{tableSearch} || '%'
+						OR DEPT_NM LIKE '%' || #{tableSearch} || '%'
+						OR JBGD_NM LIKE '%' || #{tableSearch} || '%'
+						OR SALARY_DATE LIKE '%' || #{tableSearch} || '%')
+					</otherwise>
+				</choose>
+			</if>
+	</select>
+	
+	<select id="empList" parameterType="deptVO" resultType="employeeVO">
+		SELECT
+			EMP_NM,
+			MEM_ID,
+			EMP_RRNO
+		FROM EMPLOYEE
+		WHERE DEPT_CD = #{deptVO.deptCd}
+	</select>
+	
+	<insert id="registpaystub" parameterType="salaryVO">
+		INSERT INTO SALARY
+		(
+			SALARY_DATE,
+			MEM_ID,
+			FAMILY,
+			OVERTIME,
+			NIGHT,
+			HOLIDAY,
+			DAYOFF,
+			JOBGRADE,
+			WORKDAY,
+			HOUR_WAGE,
+			DAY_WAGE,
+			MONTH_WAGE,
+			SALARY_TAX,
+			SALARY_BSLRY,
+			PENSION,
+			HEALTH,
+			EMPLOYEE,
+			INCOME_TAX,
+			WORKHOUR,
+			FILE_GROUP_NO,
+			TOTAL_WAGE,
+			SUM_WAGE		
+		)VALUES
+		(
+			#{salaryVO.salaryDate},
+			#{salaryVO.memId},
+			#{salaryVO.family},
+			#{salaryVO.overtime},
+			#{salaryVO.night},
+			#{salaryVO.holiday},
+			#{salaryVO.dayoff},
+			#{salaryVO.jobgrade},
+			#{salaryVO.workday},
+			#{salaryVO.hourWage},
+			#{salaryVO.dayWage},
+			#{salaryVO.monthWage},
+			#{salaryVO.salaryTax},
+			#{salaryVO.salaryBslry},
+			#{salaryVO.pension},
+			#{salaryVO.health},
+			#{salaryVO.employee},
+			#{salaryVO.incomeTax},
+			#{salaryVO.workhour},
+			#{salaryVO.fileGroupNo},
+			#{salaryVO.totalWage},
+			#{salaryVO.sumWage}
+		)
+	</insert>
+	
+	<select id="paystubImage" parameterType="salaryVO" resultType="fileDetailVO">
+		SELECT
+			FILE_SN,
+			FILE_GROUP_NO,
+			FILE_ORGNL_FILE_NM,
+			FILE_STRG_FILE_NM,
+			FILE_FILE_PATH_NM,
+			FILE_SZ,
+			FILE_FILE_EXTN_NM,
+			FILE_MIME,
+			FILE_FANCYSIZE,
+			FILE_FILE_STRG_YMD,
+			FILE_DWNLD_CNT
+		FROM
+			FILE_DETAIL
+		WHERE FILE_GROUP_NO = #{salaryVO.fileGroupNo}
+	</select>
+
+</mapper>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.comn.mapper.LoginMapper">
+	
+	
+	<!-- 
+		2024.09.19. AuthMenu 뽑는 쿼리 홍정호
+	 -->
+	
+	<resultMap type="authMenuVO" id="authMenuMap">
+		<result property="authCode" column="AUTH_CODE"/>
+		<result property="bigmnCd" column="BIGMN_CD"/>
+		<collection property="bigMnVOList" resultMap="BigMnMap"/>
+		<collection property="mnVOList" resultMap="mnMap"/>
+	</resultMap>
+	
+	<resultMap type="mnVO" id="mnMap">
+		<result property="mnCd" column="MN_CD"/>
+		<result property="parentMnCd" column="PARENT_MN_CD"/>
+		<result property="mnSeq" column="MN_SEQ"/>
+		<result property="mnTitle" column="MN_TITLE"/>
+		<result property="mnUrl" column="MN_URL"/>
+		<result property="mnYn" column="MN_YN"/>	
+	</resultMap>
+
+	<!-- 2024.09.19. AuthMenu 뽑는 쿼리 끝 -->
+	
+	<select id="authMenuList" resultMap="mnMap" parameterType="hashMap">
+		SELECT 
+		    MN.MN_CD,
+		    MN.PARENT_MN_CD,
+		    MN.MN_SEQ,
+		    MN.MN_TITLE,
+		    MN.MN_URL,
+		    MN.MN_YN,
+		    LEVEL
+		FROM MN MN
+		JOIN (
+		    SELECT DISTINCT AM.MN_CD
+		    FROM AUTH_MENU AM
+		    WHERE 1 =1
+		    <if test="hashMap != null and hashMap.size() > 0">
+		    AND USE_YN = 'Y'
+		        <foreach item="value" index="key" collection="hashMap" open="AND (" separator=" OR " close=")">
+		            AM.AUTH_CODE = #{value}
+		        </foreach>
+		    </if>
+		) AM ON AM.MN_CD = MN.MN_CD
+		START WITH MN.PARENT_MN_CD IS NULL
+		CONNECT BY PRIOR MN.MN_CD = MN.PARENT_MN_CD
+		ORDER BY LEVEL, MN_SEQ
+	</select>	
+	
+	
+	
+</mapper>

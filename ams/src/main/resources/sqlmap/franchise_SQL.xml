@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.facility.mapper.FranchiseMapper">
+	
+	<select id="getList" parameterType="hashMap" resultMap="franchiseMap">	
+		WITH T AS
+			(
+				SELECT ROW_NUMBER() OVER (ORDER BY F.FRN_ENTER_DATE DESC) AS RNUM
+				       , F.FRN_SE_CD
+				       , F.FRN_FLOOR_LOCATION
+				       , (SELECT COM_DET_CD_CN
+				            FROM COMMON_CODE_DETAIL
+				           WHERE COM_DET_CD = F.FRN_FLOOR_LOCATION
+				        ) AS FRN_FLOOR
+				       , F.FRN_OPEN_TM
+				       , F.FRN_CLOSE_TM
+				       , F.FRN_PROD
+				       , F.FRN_RENT_COST
+				       , F.FRN_SEC_COST
+				       , F.FRN_AREA_SIZE
+				       , F.FRN_ENTER_DATE
+				       , F.FRN_KEY_COST
+				       , F.FRN_ZONE_LOCATION
+				       , B.MEM_ID
+				       , B.BP_NM
+				       , B.BP_RPRSV_NM
+				       , B.BP_TELNO
+				       , B.BP_BRNO
+				       , B.CTRT_YMD
+				       , B.CTRT_END_YMD
+				       , B.BP_IMG_URL
+				       , B.BP_IMG_NM
+				       , B.BP_EML
+				       , B.DEPT_CD
+				       , B.BP_CTRT_STAT
+				       , B.EMP_ID
+				       , C.COM_DET_CD_CN
+				       , (SELECT D.COM_DET_CD_NM
+				          FROM COMMON_CODE_DETAIL D
+				          INNER JOIN FRANCHISE R ON (R.FRN_FLOOR_LOCATION = D.COM_DET_CD)
+				          WHERE R.FRN_FLOOR_LOCATION = F.FRN_FLOOR_LOCATION
+				          AND ROWNUM = 1
+				        ) AS FRN_POSITION
+				FROM FRANCHISE F
+				INNER JOIN BP B ON(B.MEM_ID = F.MEM_ID)
+				INNER JOIN COMMON_CODE_DETAIL C ON(C.COM_DET_CD = B.BP_CTRT_STAT)
+				WHERE B.DEPT_CD = 'C6'				<!-- C6 : 입점시설 -->
+		        <choose>
+					<when test="gubun == 'all'">
+							AND B.BP_NM LIKE '%' || #{keyword} || '%'
+							OR B.BP_RPRSV_NM LIKE '%' || #{keyword} || '%'
+							OR B.BP_CTRT_STAT LIKE '%' || #{keyword} || '%'
+					</when>
+					<when test="gubun == 'bpNm'">
+						AND B.BP_NM LIKE '%' || #{keyword} || '%'
+					</when>
+					<when test="gubun == 'rprsvNm'">
+						AND B.BP_RPRSV_NM LIKE '%' || #{keyword} || '%'
+					</when>
+					<when test="gubun == 'contract'">
+						AND B.BP_CTRT_STAT LIKE '%' || #{contractGubun} || '%'
+					</when>
+				</choose>
+			)
+			SELECT * FROM T
+			WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)
+	</select>
+	
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+	  	 SELECT COUNT(*)
+		   FROM FRANCHISE F
+		  INNER JOIN BP B ON (B.MEM_ID = F.MEM_ID)
+		  WHERE B.DEPT_CD = 'C6'				<!-- C6 : 입점시설 -->
+         <choose>
+			<when test="gubun == 'all'">
+					AND B.BP_NM LIKE '%' || #{keyword} || '%'
+					OR B.BP_RPRSV_NM LIKE '%' || #{keyword} || '%'
+					OR B.BP_CTRT_STAT LIKE '%' || #{keyword} || '%'
+			</when>
+			<when test="gubun == 'bpNm'">
+				AND B.BP_NM LIKE '%' || #{keyword} || '%'
+			</when>
+			<when test="gubun == 'rprsvNm'">
+				AND B.BP_RPRSV_NM LIKE '%' || #{keyword} || '%'
+			</when>
+			<when test="gubun == 'contract'">
+				AND B.BP_CTRT_STAT LIKE '%' || #{contractGubun} || '%'
+			</when>
+		</choose>
+	  </select>
+	
+	<resultMap type="franchiseVO" id="franchiseMap">
+		<result property="rnum" column="RNUM" />
+		<result property="memId" column="MEM_ID"/>
+		<result property="frnSeCd" column="FRN_SE_CD"/>
+		<result property="frnFloorLocation" column="FRN_FLOOR_LOCATION"/>
+		<result property="frnFloor" column="FRN_FLOOR"/>
+		<result property="frnDetFloor" column="FRN_DET_FLOOR"/>
+		<result property="frnOpenTm" column="FRN_OPEN_TM"/>
+		<result property="frnCloseTm" column="FRN_CLOSE_TM"/>
+		<result property="frnProd" column="FRN_PROD"/>
+		<result property="frnRentCost" column="FRN_RENT_COST"/>
+		<result property="frnSecCost" column="FRN_SEC_COST"/>
+		<result property="frnAreaSize" column="FRN_AREA_SIZE"/>
+		<result property="frnEnterDate" column="FRN_ENTER_DATE"/>
+		<result property="frnKeyCost" column="FRN_KEY_COST"/>
+		<result property="frnZoneLocation" column="FRN_ZONE_LOCATION"/>
+		<result property="frnPosition" column="FRN_POSITION"/>
+		<association property="bpVO" resultMap="bpMap"></association>
+		<association property="commonCodeDetailVO" resultMap="commonCodeDetailMap"></association>
+		<association property="floorInfoVO" resultMap="floorInfoMap"></association>
+	</resultMap>
+	
+	<resultMap type="floorInfoVO" id="floorInfoMap">
+		<result property="mapId" column="MAP_ID"/>
+		<result property="mapNm" column="MAP_NM"/>
+		<result property="mapFloor" column="MAP_FLOOR"/>
+		<result property="mapInout" column="MAP_INOUT"/>
+		<result property="mapImgUrl" column="MAP_IMG_URL"/>
+		<result property="mapImgNm" column="MAP_IMG_NM"/>
+		<result property="memId" column="MEM_ID"/>
+	</resultMap>
+	
+	<resultMap type="bpVO" id="bpMap">
+		<result property="bpImgUrl" column="BP_IMG_URL"/>
+		<result property="bpImgNm" column="BP_IMG_NM"/>
+		<result property="bpEml" column="BP_EML"/>
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="bpCtrtStat" column="BP_CTRT_STAT"/>
+		<result property="empId" column="EMP_ID"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="bpNm" column="BP_NM"/>
+		<result property="bpRprsvNm" column="BP_RPRSV_NM"/>
+		<result property="bpTelno" column="BP_TELNO"/>
+		<result property="bpBrno" column="BP_BRNO"/>
+		<result property="ctrtYmd" column="CTRT_YMD"/>
+		<result property="ctrtEndYmd" column="CTRT_END_YMD"/>
+	</resultMap>
+	
+	<resultMap type="commonCodeDetailVO" id="commonCodeDetailMap">
+		<result property="comDetCd" column="COM_DET_CD"/>
+		<result property="comCdGroup" column="COM_CD_GROUP"/>
+		<result property="comDetCdNm" column="COM_DET_CD_NM"/>
+		<result property="comDetCdCn" column="COM_DET_CD_CN"/>
+	</resultMap>
+	
+	<select id="getContractList" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD
+			   , COM_DET_CD_CN
+		  FROM COMMON_CODE_DETAIL
+		 WHERE COM_CD_GROUP = 'Z'
+	</select>
+	
+	<select id="detail" parameterType="String" resultMap="franchiseMap">
+		SELECT F.FRN_SE_CD
+		       , F.FRN_FLOOR_LOCATION
+	           , (SELECT COM_DET_CD_CN
+			        FROM COMMON_CODE_DETAIL
+			       WHERE COM_DET_CD = F.FRN_FLOOR_LOCATION
+			    ) AS FRN_FLOOR
+		       , F.FRN_OPEN_TM
+		       , F.FRN_CLOSE_TM
+		       , F.FRN_PROD
+		       , F.FRN_RENT_COST
+		       , F.FRN_SEC_COST
+		       , F.FRN_AREA_SIZE
+		       , F.FRN_ENTER_DATE
+		       , F.FRN_KEY_COST
+		       , F.FRN_ZONE_LOCATION
+               , B.MEM_ID
+               , B.BP_NM
+               , B.BP_RPRSV_NM
+               , B.BP_TELNO
+               , B.BP_BRNO
+               , B.CTRT_YMD
+               , B.CTRT_END_YMD
+               , B.BP_IMG_URL
+               , B.BP_IMG_NM
+               , B.BP_EML
+               , B.DEPT_CD
+               , B.BP_CTRT_STAT
+               , B.EMP_ID
+               , C.COM_DET_CD_CN
+               , C.COM_DET_CD_NM
+               , M.MAP_ID
+               , M.MAP_NM
+               , M.MAP_IMG_URL
+               , M.MAP_IMG_NM
+               , M.MAP_FLOOR
+               , M.MAP_INOUT
+               , (SELECT D.COM_DET_CD_NM
+			      FROM COMMON_CODE_DETAIL D
+			      INNER JOIN FRANCHISE R ON (R.FRN_FLOOR_LOCATION = D.COM_DET_CD)
+			      WHERE R.FRN_FLOOR_LOCATION = F.FRN_FLOOR_LOCATION
+			      AND ROWNUM = 1
+			    ) AS FRN_POSITION
+		  FROM FRANCHISE F
+          INNER JOIN BP B ON(B.MEM_ID = F.MEM_ID)
+          INNER JOIN COMMON_CODE_DETAIL C ON(C.COM_DET_CD = B.BP_CTRT_STAT)
+          INNER JOIN FLOOR_INFO M ON(M.MEM_ID = B.MEM_ID)
+          WHERE B.MEM_ID = #{memId}
+	</select>
+	
+	<select id="getCommonCodeCn" parameterType="String" resultType="String">
+		SELECT COM_DET_CD_CN
+		FROM COMMON_CODE_DETAIL
+		WHERE COM_DET_CD = #{frnSeCd}
+	</select>
+	
+	<select id="getFloor" parameterType="String" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD
+			   , COM_CD_GROUP
+			   , COM_DET_CD_CN
+			   , COM_DET_CD_NM
+		FROM COMMON_CODE_DETAIL 
+		WHERE COM_CD_GROUP = #{floor}
+	</select>
+
+	<select id="getDetFloor" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD
+			   , COM_CD_GROUP
+			   , COM_DET_CD_CN
+			   , COM_DET_CD_NM
+		FROM COMMON_CODE_DETAIL 
+		WHERE COM_CD_GROUP = 'Y'
+	</select>
+	
+	<select id="comparePosition" parameterType="ZoneVO" resultType="ZoneVO">
+		SELECT ZONE_POSITION
+		      , ZONE_FLOOR
+		      , ZONE_SECTION
+		FROM ZONE
+		WHERE ZONE_POSITION = #{zonePosition}
+		AND ZONE_FLOOR = #{zoneFloor}
+		AND ZONE_STAT = 'N'
+	</select>
+	
+	<update id="frnachiseUpdate" parameterType="franchiseVO">
+		UPDATE FRANCHISE
+		   SET FRN_FLOOR_LOCATION = #{frnFloorLocation}
+		      , FRN_OPEN_TM = #{frnOpenTm}
+		      , FRN_CLOSE_TM = #{frnCloseTm}
+		      , FRN_PROD = #{frnProd}
+		      , FRN_ENTER_DATE = #{frnEnterDate}
+		      , FRN_ZONE_LOCATION = #{frnZoneLocation}
+		   WHERE MEM_ID = #{memId}
+	</update>
+	
+	<update id="floorInfoUpdate" parameterType="franchiseVO">
+		UPDATE FLOOR_INFO
+			SET MAP_FLOOR = #{frnFloorLocation}
+			   , MAP_IMG_URL = #{floorInfoVO.mapImgUrl}
+			   , MAP_IMG_NM = #{floorInfoVO.mapImgNm}
+			   , MAP_INOUT = #{floorInfoVO.mapInout}
+			   , MAP_NM = #{floorInfoVO.mapNm}
+			   , MAP_ID = #{floorInfoVO.mapId}
+			WHERE MEM_ID = #{memId}
+	</update>
+	
+	<update id="updateZone" parameterType="franchiseVO">
+		UPDATE ZONE
+		   SET ZONE_STAT = 'Y'
+		 WHERE ZONE_POSITION = #{zonePosition} 
+		   AND ZONE_FLOOR = #{zoneFloor}
+		   AND ZONE_SECTION = #{zoneSection}
+	</update>
+
+	<update id="updateBeforeZone" parameterType="franchiseVO">
+		UPDATE ZONE
+		   SET ZONE_STAT = 'N'
+		 WHERE ZONE_POSITION = #{zonePosition} 
+		   AND ZONE_FLOOR = #{zoneFloor}
+		   AND ZONE_SECTION = #{zoneSection}
+	</update>
+	
+</mapper>

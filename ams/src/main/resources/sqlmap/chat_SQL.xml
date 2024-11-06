@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.telecom.mapper.ChatMapper">
+	
+	
+	<resultMap type="chatRoomVO" id="chatRoomMap">
+		<result property="chatRoomNo" column="CHAT_ROOM_NO"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="chatRoomTitle" column="CHAT_ROOM_TITLE"/>
+		<result property="chatRoomStat" column="CHAT_ROOM_STAT"/>
+		<result property="createDt" column="CREATE_DT"/>
+		<collection property="chatEmpVOList" resultMap="chatEmpMap"/>
+	</resultMap>
+	<resultMap type="chatEmpVO" id="chatEmpMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="chatRoomNo" column="CHAT_ROOM_NO"/>
+	</resultMap>
+	
+	
+	
+	<select id="roomList" resultMap="chatRoomMap">
+		SELECT
+			CE.CHAT_ROOM_NO,
+			CE.MEM_ID,
+			CR.CHAT_ROOM_TITLE,
+			CR.CHAT_ROOM_STAT,
+			CR.CREATE_DT
+		FROM CHAT_EMP CE
+		JOIN
+			CHAT_ROOM CR
+		ON CE.CHAT_ROOM_NO = CR.CHAT_ROOM_NO
+		WHERE CE.MEM_ID = #{memId}
+	</select>
+	
+	<insert id="createRoom" parameterType="chatRoomVO">
+		INSERT INTO CHAT_ROOM(
+			CHAT_ROOM_NO,
+			MEM_ID,
+			CHAT_ROOM_TITLE,
+			CHAT_ROOM_STAT,
+			CREATE_DT
+		)
+		VALUES
+		(
+			#{chatRoomNo},
+			#{memId},
+			NVL(#{chatRoomTitle}, '새로운 채팅방'),
+			#{chatRoomStat},
+			#{createDt}
+		)
+	</insert>
+	
+	<insert id="sendMessageforDB" parameterType="chatMsgVO">
+		INSERT INTO CHAT_MESSAGE
+		(
+			MSG_NO,
+			MEM_ID,
+			MSG_CONTENT,
+			MSG_DT,
+			CHAT_ROOM_NO
+		)
+		VALUES
+		(
+			(
+				SELECT NVL(MAX(MSG_NO) +1 , 1)
+				FROM CHAT_MESSAGE			
+			),
+			#{memId},
+			#{msgContent},
+			#{msgDt},
+			#{chatRoomNo}
+		)
+	</insert>
+	
+	<select id="getMessageList" parameterType="chatMsgVO" resultType="chatMsgVO">
+		SELECT
+			CM.MSG_NO,
+			CM.MEM_ID,
+			CM.MSG_CONTENT,
+			CM.MSG_DT,
+			CM.CHAT_ROOM_NO,
+			EMP.EMP_NM,
+			EMP.EMP_IMG_URL,
+			BP.BP_NM,
+			BP.BP_IMG_URL
+		FROM
+			CHAT_MESSAGE CM
+		LEFT JOIN
+			EMPLOYEE EMP ON CM.MEM_ID = EMP.MEM_ID
+		LEFT JOIN
+			BP BP ON CM.MEM_ID = BP.MEM_ID
+		WHERE
+			CHAT_ROOM_NO = #{chatRoomNo}
+        ORDER BY MSG_NO ASC
+	</select>
+	
+	<insert id="createChatEmp" parameterType="chatRoomVO">
+		<foreach collection="chatEmpVOList" item="chatEmpVO" open="DECLARE BEGIN" close="; END;" separator=";">
+			INSERT INTO CHAT_EMP (
+				MEM_ID,
+				CHAT_ROOM_NO
+			)
+			VALUES (
+				#{chatEmpVO.memId},
+				#{chatRoomNo}
+			)
+		</foreach>
+	</insert>
+	
+	<delete id="exitChat" parameterType="chatEmpVO">
+		DELETE
+			FROM CHAT_EMP
+		WHERE MEM_ID = #{memId}
+		AND CHAT_ROOM_NO =#{chatRoomNo}
+	</delete>
+	
+	<select id="chatEmpList" parameterType="chatEmpVO" resultMap="memberMap">
+		SELECT
+			EMP.EMP_NM, EMP.EMP_IMG_URL, JBGD.JBGD_CD, JBGD.JBGD_NM,
+			DEPT.DEPT_CD, DEPT.DEPT_NM,
+			BP.BP_NM, BP.BP_IMG_URL, BP.BP_RPRSV_NM
+		FROM CHAT_EMP CHT
+		LEFT JOIN EMPLOYEE EMP ON EMP.MEM_ID = CHT.MEM_ID
+		LEFT JOIN JOB_GRADE JBGD ON EMP.JBGD_CD = JBGD.JBGD_CD
+		LEFT JOIN BP BP ON CHT.MEM_ID = BP.MEM_ID
+		LEFT JOIN DEPARTMENT DEPT ON DEPT.DEPT_CD = EMP.DEPT_CD OR DEPT.DEPT_CD = BP.DEPT_CD
+    	WHERE 1 = 1
+		AND CHT.CHAT_ROOM_NO = #{chatRoomNo}
+	</select>
+	
+	<select id="chatEmpCount" parameterType="chatEmpVO" resultType="int">
+		SELECT COUNT(*)
+		FROM CHAT_EMP
+		WHERE CHAT_ROOM_NO = #{chatRoomNo}
+	</select>
+	
+	<resultMap type="memberVO" id="memberMap">
+		<result property="memId" column="MEM_ID"/>
+		<association property="employeeVO" resultMap="employeeMap"></association>
+		<association property="bpVO" resultMap="bpMap"></association>
+		<association property="jobGradeVO" resultMap="jobGradeMap"></association>
+		<association property="deptVO" resultMap="departmentMap"></association>
+	</resultMap>	
+	
+	<resultMap type="employeeVO" id="employeeMap">
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empImgUrl" column="EMP_IMG_URL"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="deptCd" column="DEPT_CD"/>
+	</resultMap>
+	
+	<resultMap type="bpVO" id="bpMap">
+		<result property="bpNm" column="BP_NM"/>
+		<result property="bpImgUrl" column="BP_IMG_URL"/>
+		<result property="bpRprsvNm" column="BP_RPRSV_NM"/>
+	</resultMap>	
+	
+	<resultMap type="jobGradeVO" id="jobGradeMap">
+		<result property="jbgdNm" column="JBGD_NM"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+	</resultMap>
+	
+	<resultMap type="deptVO" id="departmentMap">
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="deptNm" column="DEPT_NM"/>
+	</resultMap>
+	
+</mapper>

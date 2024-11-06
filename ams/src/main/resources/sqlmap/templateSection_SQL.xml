@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approv.mapper.TemplateSectionMapper">
+	
+	<select id="templateList" resultType="templateSectionVO">
+		SELECT TEMP_SE_CD, TEMP_SE_NM, TEMP_SE_CLOB, TEMP_SE_YN, ATRZ_TYPE_CD
+  		  FROM TEMPLATE_SECTION
+	</select>
+	
+</mapper>

@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.human.mapper.BpMapper">
+	
+	<!-- 생성된 협력업체 아이디 정보 조회 -->
+	<select id="bpList"  parameterType="hashMap"  resultMap="bpMap">
+	WITH T AS
+		(
+		SELECT
+		        A.PASSWORD,
+		        A.ENABLED,
+		        B.MEM_ID,
+		        B.BP_NM,
+		        B.BP_RPRSV_NM,
+		        SUBSTR(B.BP_TELNO, 1, 3) || '-' ||
+		        SUBSTR(B.BP_TELNO, 4, 3) || '-' ||
+		        SUBSTR(B.BP_TELNO, 8) AS BP_TELNO,
+		        SUBSTR(B.BP_BRNO, 1, 3) || '-' ||
+		        SUBSTR(B.BP_BRNO, 4, 2) || '-' ||
+		        SUBSTR(B.BP_BRNO, 6, 5) AS BP_BRNO,
+		        TO_CHAR(TO_DATE( B.CTRT_YMD, 'YYYYMMDD'), 'YYYY-MM-DD') AS CTRT_YMD,
+		        TO_CHAR(TO_DATE( B.CTRT_END_YMD, 'YYYYMMDD'), 'YYYY-MM-DD') AS CTRT_END_YMD,
+		        B.BP_IMG_URL,
+		        B.BP_IMG_NM,
+		        B.BP_EML,
+		        B.DEPT_CD,
+		        B.BP_CTRT_STAT,
+		        B.EMP_ID,
+		        ROW_NUMBER() OVER (
+		        ORDER BY B.CTRT_YMD ASC,
+		        C.AUTH_CODE) AS RNUM,
+		        D.DEPT_NM,
+                E.COM_DET_CD_CN,
+                F.EMP_NM      
+		FROM MEMBER A
+		    INNER JOIN BP B ON A.MEM_ID=B.MEM_ID
+		    INNER JOIN AUTH_LINK C ON A.MEM_ID = C.MEM_ID
+		    INNER JOIN DEPARTMENT D ON D.DEPT_CD = B.DEPT_CD
+           INNER JOIN COMMON_CODE_DETAIL E ON E.COM_DET_CD = B.BP_CTRT_STAT
+		   LEFT JOIN EMPLOYEE F ON F.MEM_ID = B.EMP_ID
+            	  WHERE 1=1
+          	     <include refid="where"></include>
+     			  )
+		SELECT * FROM T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)
+	</select>
+	
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+	  		SELECT COUNT(*)
+		FROM MEMBER A <!--  사용자 -->
+		INNER JOIN BP B ON A.MEM_ID=B.MEM_ID <!-- 협력업체 -->
+		INNER JOIN AUTH_LINK C ON A.MEM_ID = C.MEM_ID <!-- 권한 -->
+        INNER JOIN DEPARTMENT D ON D.DEPT_CD = B.DEPT_CD <!-- 부서 -->
+        INNER JOIN COMMON_CODE_DETAIL E ON E.COM_DET_CD = B.BP_CTRT_STAT <!-- 각각공통코드 -->
+        INNER JOIN EMPLOYEE F ON F.MEM_ID = B.EMP_ID
+            WHERE 1=1
+        <include refid="where"></include>
+	</select>
+	
+		<sql id="where">
+
+		<if test="gubun != null and gubun != ''">
+			<choose>
+				<when test="gubun == 'all'">
+					AND  (
+						 D.DEPT_NM LIKE '%' || #{keyword} || '%' <!-- 업체분류-->
+					OR   B.BP_NM LIKE '%' || #{keyword} || '%' <!-- 협력업체명-->
+					OR   B.BP_RPRSV_NM LIKE '%' || #{keyword} || '%' <!-- 대표자명 -->
+					OR   B.BP_TELNO LIKE '%' || #{keyword} || '%' <!-- 유선번호-->
+					OR   B.BP_EML LIKE '%' || #{keyword} || '%' <!-- 이메일-->
+					OR   E.COM_DET_CD_CN LIKE '%' || #{keyword} || '%' <!-- 계약상태-->
+					OR   F.EMP_NM  LIKE '%' || #{keyword} || '%') <!--  담당자-->
+				</when>
+				<when test="gubun == 'deptNm'">
+					AND D.DEPT_NM  LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'bpNm'">
+					AND B.BP_NM LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'bpRprsvNm'">
+					AND B.BP_RPRSV_NM LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'bpTelno'">
+					AND B.BP_TELNO LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'bpEml'">
+					AND B.BP_EML LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'comDetCdCn'"> 
+					AND  E.COM_DET_CD_CN LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'empNm'">
+					AND F.EMP_NM LIKE '%' || #{keyword} || '%'
+				</when>
+			</choose>
+		</if>
+	</sql>
+	
+	<!-- 상세보기 -->
+	<select id="detail" parameterType="String" resultType="bpVO">
+		SELECT
+			    A.PASSWORD,
+			    A.ENABLED,
+			    A.MEM_ID, 
+			    B.BP_NM,
+			    B.BP_RPRSV_NM,
+			    SUBSTR(B.BP_TELNO, 1, 3) || '-' || SUBSTR(B.BP_TELNO, 4, 3) || '-' || SUBSTR(B.BP_TELNO, 7) AS BP_TELNO,
+			    SUBSTR(B.BP_BRNO, 1, 3) || '-' || SUBSTR(B.BP_BRNO, 4, 2) || '-' || SUBSTR(B.BP_BRNO, 6, 5) AS BP_BRNO,
+			    TO_CHAR(TO_DATE(B.CTRT_YMD, 'YYYYMMDD'), 'YYYY-MM-DD') AS CTRT_YMD,
+			    TO_CHAR(TO_DATE(B.CTRT_END_YMD, 'YYYYMMDD'), 'YYYY-MM-DD') AS CTRT_END_YMD,
+			    B.BP_IMG_URL,
+			    B.BP_IMG_NM,
+			    B.BP_EML,
+			    B.DEPT_CD, 
+			    B.BP_CTRT_STAT,
+			    B.EMP_ID,
+			    ROW_NUMBER() OVER (
+			        ORDER BY B.CTRT_YMD ASC, C.AUTH_CODE) AS RNUM,
+		        C.AUTH_CODE,
+			    D.DEPT_NM,
+			    E.COM_DET_CD_CN,
+			    F.EMP_NM
+		FROM MEMBER A
+			    INNER JOIN BP B ON A.MEM_ID = B.MEM_ID
+			    INNER JOIN AUTH_LINK C ON A.MEM_ID = C.MEM_ID
+			    INNER JOIN DEPARTMENT D ON D.DEPT_CD = B.DEPT_CD
+			    INNER JOIN COMMON_CODE_DETAIL E ON E.COM_DET_CD = B.BP_CTRT_STAT
+			    LEFT JOIN EMPLOYEE F ON F.MEM_ID = B.EMP_ID
+		WHERE 1=1
+		    AND (C.AUTH_CODE = 'ROLE_AIR' OR C.AUTH_CODE = 'ROLE_FRN' OR C.AUTH_CODE = 'ROLE_SBCTR')
+		    AND A.MEM_ID = #{memId}
+
+	</select>
+	
+	<!-- 담당자 목록조회-->
+	<select id="empList" resultMap="empMap">
+	    SELECT A.MEM_ID,
+	           A.EMP_NM, 
+	           A.DEPT_CD,
+	           B.DEPT_NM
+	    FROM EMPLOYEE A
+	    INNER JOIN DEPARTMENT B
+	    ON A.DEPT_CD = B.DEPT_CD
+	    WHERE A.DEPT_CD= 'C4'
+	</select>
+	
+	<select id="deptList" resultType="deptVO">
+	  	SELECT DEPT_CD, DEPT_NM
+		 FROM DEPARTMENT
+		 WHERE DEPT_CD = 'C5'
+		 OR DEPT_CD = 'C6'
+		 OR DEPT_CD = 'C7'
+		 ORDER BY 1 
+	</select>
+	
+	<!--  권한목록-->
+	<select id="authList" resultType="authVO">
+		SELECT AUTH_CODE, AUTH_NM
+		FROM AUTH
+		WHERE AUTH_CODE = 'ROLE_AIR'
+		OR AUTH_CODE = 'ROLE_FRN'
+		OR AUTH_CODE = 'ROLE_SBCTR'
+		ORDER BY 1 
+	</select>
+	
+	<!-- 계약상태 목록 -->
+	<select id="ctrtList" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD, COM_CD_GROUP, COM_DET_CD_NM, COM_DET_CD_CN
+	    FROM COMMON_CODE_DETAIL
+	    WHERE COM_CD_GROUP = 'Z'
+	    ORDER BY 1
+	</select>
+	
+	<!-- 업체구분 -->
+	<select id="selFrnSeCd" resultType="commonCodeDetailVO">
+	  SELECT COM_DET_CD, COM_CD_GROUP, COM_DET_CD_NM, COM_DET_CD_CN
+	    FROM COMMON_CODE_DETAIL
+	    WHERE COM_CD_GROUP = 'M'
+	    ORDER BY 1
+	</select>
+	
+	<!-- 협력업체 수정 실행 -->
+	<update id="editPost" parameterType="bpVO">
+		UPDATE BP 
+		SET 
+			BP_NM = #{bpNm}, 
+			BP_RPRSV_NM =#{bpRprsvNm}, 
+			BP_TELNO =#{bpTelno}, 
+	        CTRT_YMD=#{ctrtYmd},
+			CTRT_END_YMD =#{ctrtEndYmd},
+	    	<if test="bpImgUrl!=null and bpImgUrl!=''">
+				BP_IMG_URL =#{bpImgUrl}, 
+	    	</if>
+			BP_IMG_NM ='황치즈', 
+			BP_EML =#{bpEml}, 
+			DEPT_CD =#{deptCd}, 
+			BP_CTRT_STAT =#{bpCtrtStat},
+			EMP_ID =#{empId}
+			WHERE   MEM_ID = #{memId}
+	</update>
+	
+	<!-- 협력업체 권한 수정 실행-->
+	<update id="editPostAuth" parameterType="bpVO">
+		UPDATE AUTH_LINK
+		SET AUTH_CODE=#{authCd}
+		WHERE MEM_ID =#{memId}
+	</update>
+	
+	<!-- 입점업체 구분 업뎃 -->
+	<update id="editMyfrn" parameterType="bpVO">
+	  UPDATE  FRANCHISE
+         SET FRN_SE_CD =#{frnSeCd}
+         WHERE MEM_ID =#{memId}
+	</update>
+	
+	<!-- 이미지 업로드 -->
+	<update id="updateImg" parameterType="bpVO">
+		UPDATE BP
+		SET BP_IMG_URL = #{bpImgUrl},
+		    BP_IMG_NM = #{bpImgNm}
+		WHERE MEM_ID = #{memId}
+	</update>
+	
+	 <!--  비밀번호 조회-->
+	 <select id="memList" parameterType="String" resultType="memberVO">
+		 SELECT MEM_ID, PASSWORD, ENABLED
+		 FROM MEMBER
+		 WHERE MEM_ID =#{memId}
+	 </select>
+	
+	<!-- 비밀번호 업뎃 -->
+	 <update id="updatePass" parameterType="bpVO">
+	  UPDATE MEMBER
+		SET PASSWORD = #{password}
+		WHERE MEM_ID =#{memId} 
+	 </update>
+	 
+	<!-- 계약상태 만료시 계정 더이상 사용할 수 없음 -->
+	 <update id="updateEnabled" parameterType="String">
+	 UPDATE MEMBER
+		SET ENABLED = 0
+		WHERE MEM_ID = #{memId} 
+	 </update>
+	
+	<!-- 
+	/*
+	BpVO(bpImgUrl=9ed743d5-c12e-4e5a-b2f0-3677aecac14d_airplane5.jpg, bpImgNm=null, bpEml=asdf@asdf.asdf, deptCd=C5, deptNm=null, bpCtrtStat=null, empId=emp24C1029, memId=undefined, bpNm=asdf5,
+	 bpRprsvNm=이이잉35, bpTelno=423, bpBrno=1234123, ctrtYmd=20241008, ctrtEndYmd=20241024, comDetCdCn=null, empNm=null, authCd=ROLE_AIR, password=null, 
+	 uploadFile=org.springframework.web.multipart.support.StandardMultipartHttpServletRequest$StandardMultipartFile@623f4b4b, auth=null, rnum=null, commonCodeDetailVO=null, 
+	 jobGrade=null, departmentVO=null, authCode=null, authNm=null, 
+	 		memberVO=MemberVO(memId=null, password=$2a$10$aZgcMv19C5lXNlnggmGui.izk6L8UEqY64TYGjR5Ukultr66AAgxO, 
+	 		enabled=0, employeeVO=null, bpVO=null, jobGradeVO=null, deptVO=null, authLinkVOList=null), employeeVO=null, franchiseVO=null)
+	 */
+	 -->
+	<insert id="registPost" parameterType="bpVO">
+	   <selectKey resultType="String" order="BEFORE" keyProperty="memId">
+      SELECT SUBSTR(NVL(MAX(MEM_ID), 'bp' || TO_CHAR(SYSDATE, 'YY') || #{deptCd}   ||'000'), 1, 6) || 
+				 TRIM(TO_CHAR(SUBSTR(NVL(MAX(MEM_ID), 'bp' || TO_CHAR(SYSDATE, 'YY') ||  #{deptCd}     || '000'), -3) + 1, '000'))
+			FROM MEMBER 
+			WHERE MEM_ID LIKE 'bp%' 
+			  AND MEM_ID LIKE '__' || TO_CHAR(SYSDATE, 'YY') || '%' 
+			  AND MEM_ID LIKE '____' ||  #{deptCd}     || '%'
+	   </selectKey>   
+   
+       <![CDATA[
+        DECLARE
+              v_new_mem_id VARCHAR2(20);
+              v_max_id VARCHAR2(20);
+              v_year VARCHAR2(2); 
+              v_password VARCHAR2(1000) := #{memberVO.password};  
+              v_auth_cd VARCHAR2(300) := #{authCd};  
+               
+              v_bp_nm VARCHAR2(50) := #{bpNm};  
+              v_bp_rprsv_nm VARCHAR2(300) := #{bpRprsvNm};  
+              v_bp_telno VARCHAR2(11) := #{bpTelno};  
+              v_bp_brno VARCHAR2(30) := #{bpBrno};  
+              v_ctrt_ymd VARCHAR2(8) :=  #{ctrtYmd}; 
+              v_ctrt_end_ymd VARCHAR2(8) := #{ctrtEndYmd}; 
+              v_bp_img_url VARCHAR2(400) := #{bpImgUrl};  
+              v_bp_eml VARCHAR2(20) := #{bpEml}; 
+              v_dept_cd VARCHAR2(20) :=  UPPER(#{deptCd});  
+              v_emp_id VARCHAR2(20) := #{empId};  
+              v_frn_se_cd VARCHAR2(2) := #{frnSeCd};
+              v_bp_ctrt_stat VARCHAR2(20) := 'Z1'; 
+              
+              
+       BEGIN 
+              v_year := TO_CHAR(SYSDATE, 'YY'); 
+              v_new_mem_id := 'bp' || v_year || v_dept_cd; 
+         
+              SELECT MAX(MEM_ID) 
+              INTO v_max_id 
+              FROM BP 
+              WHERE MEM_ID LIKE v_new_mem_id || '%'; 
+         
+              IF v_max_id IS NOT NULL THEN 
+              
+                  IF LENGTH(v_max_id) >= 8 THEN 
+                      v_new_mem_id := v_new_mem_id || LPAD(NVL(TO_NUMBER(SUBSTR(v_max_id, 8)) + 1, 1), 3, '0'); 
+                  ELSE 
+                      v_new_mem_id := v_new_mem_id || '001'; 
+                  END IF; 
+              ELSE 
+                  v_new_mem_id := v_new_mem_id || '001'; 
+              END IF; 
+         
+            
+              INSERT INTO MEMBER (MEM_ID, PASSWORD, ENABLED) 
+              VALUES (#{memId}, v_password, 1); 
+         
+               
+              INSERT INTO BP (
+             			MEM_ID, BP_NM, BP_RPRSV_NM, BP_TELNO, BP_BRNO, 
+             			CTRT_YMD, CTRT_END_YMD, BP_IMG_URL,
+             			BP_EML, DEPT_CD, BP_CTRT_STAT, EMP_ID
+              ) 
+              VALUES ( #{memId}, v_bp_nm, v_bp_rprsv_nm, v_bp_telno, v_bp_brno,
+              			 v_ctrt_ymd, v_ctrt_end_ymd, v_bp_img_url,
+              			 v_bp_eml, v_dept_cd, v_bp_ctrt_stat, v_emp_id 
+           	  ); 
+         
+              INSERT INTO AUTH_LINK (MEM_ID, AUTH_CODE) 
+              VALUES (#{memId}, v_auth_cd); 
+              
+            IF v_auth_cd = 'ROLE_FRN' THEN
+               
+               INSERT INTO FRANCHISE (MEM_ID, FRN_SE_CD)
+               VALUES(#{memId},#{frnSeCd});
+               
+               INSERT INTO FLOOR_INFO (MEM_ID)
+               VALUES(#{memId});
+                 END IF;
+         
+              COMMIT;  
+          EXCEPTION 
+              WHEN OTHERS THEN 
+                  ROLLBACK;  
+                   RAISE;     
+          END; 
+          ]]> 
+   </insert>
+	
+	<select id="mygubun" parameterType="String" resultMap="bpMap">
+	    SELECT A.BP_NM, B.FRN_SE_CD, C.COM_DET_CD_CN, D.DEPT_NM 
+        FROM BP A
+        INNER JOIN FRANCHISE B ON A.MEM_ID = B.MEM_ID
+        INNER JOIN COMMON_CODE_DETAIL C ON B.FRN_SE_CD = C.COM_DET_CD
+        INNER JOIN DEPARTMENT D ON D.DEPT_CD = A.DEPT_CD
+        WHERE A.MEM_ID = #{memId}
+	</select>
+	
+	<select id="myfrn" parameterType="String" resultMap="bpMap">
+		SELECT  A.MEM_ID, A.FRN_SE_CD, B.COM_DET_CD_CN, C.BP_NM, C.BP_RPRSV_NM
+	    FROM FRANCHISE A 
+	    INNER JOIN COMMON_CODE_DETAIL B ON B.COM_DET_CD = A.FRN_SE_CD
+	    LEFT JOIN BP C ON C.MEM_ID = A.MEM_ID
+	     WHERE A.MEM_ID = #{memId}
+	</select>
+	
+	<!-- 협력업체 정보 -->
+	<resultMap type="bpVO" id="bpMap">
+		<result property="bpImgUrl" column="BP_IMG_URL"/>
+		<result property="bpImgNm" column="BP_IMG_NM"/>
+		<result property="bpEml" column="BP_EML"/>
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="bpCtrtStat" column="BP_CTRT_STAT"/>
+		<result property="empId" column="EMP_ID"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="bpNm" column="BP_NM"/>
+		<result property="bpRprsvNm" column="BP_RPRSV_NM"/>
+		<result property="bpTelno" column="BP_TELNO"/>
+		<result property="bpBrno" column="BP_BRNO"/>
+		<result property="rnum" column="RNUM"/>
+		<result property="deptNm" column="DEPT_NM"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="authCode" column="AUTH_CODE"/>
+		<result property="ctrtYmd" column="CTRT_YMD"/>
+		<result property="ctrtEndYmd" column="CTRT_END_YMD"/>
+		<result property="frnSeCd" column="FRN_SE_CD"/>
+		<result property="comDetCdCn" column="COM_DET_CD_CN"/>
+		<association property="auth" resultMap="authMap"/>
+		<association property="franchiseVO" resultMap="frnMap"/>
+		<association property="memberVO" resultMap="memberMap"/>
+		<association property="employeeVO" resultMap="empMap"/>
+		<association property="departmentVO" resultMap="departmentMap"/>
+		<association property="commonCodeDetailVO" resultMap="commonCodeDetailMap"/>
+	</resultMap>
+	
+	<!-- 입점업체 -->
+	<resultMap type="franchiseVO" id="frnMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="frnSeCd" column="FRN_SE_CD"/>
+		<result property="frnFloorLocation" column="FRN_FLOOR_LOCATION"/>
+		<result property="frnOpenTm" column="FRN_OPEN_TM"/>
+		<result property="frnCloseTm" column="FRN_CLOSE_TM"/>
+		<result property="frnImgUrl" column="FRN_IMG_URL"/>
+		<result property="frnProd" column="FRN_PROD"/>
+		<result property="frnRentCost" column="FRN_RENT_COST"/>
+		<result property="frnSecCost" column="FRN_SEC_COST"/>
+		<result property="frnAreaSize" column="FRN_AREA_SIZE"/>
+		<result property="frnEnterDate" column="FRN_ENTER_DATE"/>
+		<result property="frnKeyCost" column="FRN_KEY_COST"/>
+		<result property="frnZoneLocation" column="FRN_ZONE_LOCATION"/>
+	</resultMap>
+	
+	<!-- 권한 -->
+	<resultMap type="authVO" id="authMap">
+		<result property="authNm" column="AUTH_NM"/>
+		<result property="authCd" column="AUTH_CODE"/>
+	</resultMap>
+
+	<!-- 부서 -->
+	<resultMap type="deptVO" id="departmentMap">
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="deptNm" column="DEPT_NM"/>
+	</resultMap>
+
+	<!-- 사용자계정생성 -->
+	<resultMap type="memberVO" id="memberMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="password" column="PASSWORD"/>
+		<result property="enabled" column="ENABLED"/>
+	</resultMap>
+
+	<!-- 계약상태, 층,구역, 입점업체분류 공통코드 -->
+	<resultMap type="commonCodeDetailVO" id="commonCodeDetailMap">
+		<result property="comDetCd" column="COM_DET_CD"/>
+		<result property="comCdGroup" column="COM_CD_GROUP"/>
+		<result property="comDetCdNm" column="COM_DET_CD_NM"/>
+		<result property="comDetCdCn" column="COM_DET_CD_CN"/>
+	</resultMap>
+	
+	<!-- 사원  -->
+	<resultMap type="employeeVO" id="empMap">
+		<result property="empImgNm" column="EMP_IMG_NM"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empRrno" column="EMP_RRNO"/>
+		<result property="empEml" column="EMP_EML"/>
+		<result property="empMoblphon" column="EMP_MOBLPHON"/>
+		<result property="empZip" column="EMP_ZIP"/>
+		<result property="empRoadNmAddr" column="EMP_ROAD_NM_ADDR"/>
+		<result property="empDaddr" column="EMP_DADDR"/>
+		<result property="empImgUrl" column="EMP_IMG_URL"/>
+		<result property="empYrycDaycnt" column="EMP_YRYC_DAYCNT"/>
+		<result property="empHdofStat" column="EMP_HDOF_STAT"/>
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD"/>
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD"/>
+		<result property="empAtrzSgn" column="EMP_ATRZ_SGN"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="deptNm" column="DEPT_NM"/>
+		<result property="empGender" column="EMP_GENDER"/>
+	</resultMap>
+	
+</mapper>

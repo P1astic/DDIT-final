@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.human.mapper.BpPassMapper">
+
+	<resultMap type="passRegistVO" id="passRegistMap">
+		<result property="passAppNo" column="PASS_APP_NO"/>
+		<result property="passRegistYn" column="PASS_REGIST_YN"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="passRegistAplyYmd" column="PASS_REGIST_APLY_YMD"/>
+		<result property="passRegistTitle" column="PASS_REGIST_TITLE"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>	
+	</resultMap>
+	
+	<insert id="requestRegistPdf" parameterType="passRegistVO">
+		<selectKey resultType="String" order="BEFORE" keyProperty="passAppNo">
+			SELECT 'PASSAPP-' || TO_CHAR(SYSDATE, 'YYYYMMDD') || '-' || 
+			    LPAD(NVL(MAX(TO_NUMBER(SUBSTR(PASS_APP_NO, -3))), 0) + 1, 3, '0') AS PASS_APP_NO
+			FROM PASS_REGIST
+		</selectKey>
+	
+		INSERT INTO PASS_REGIST
+		(
+			PASS_APP_NO,
+			MEM_ID,
+			PASS_REGIST_APLY_YMD,
+			PASS_REGIST_TITLE,
+			PASS_REGIST_YN,
+			FILE_GROUP_NO
+		)
+		VALUES
+		(
+			#{passAppNo},
+			#{passRegistVO.memId},
+			#{passRegistVO.passRegistAplyYmd},
+			#{passRegistVO.passRegistTitle},
+			#{passRegistVO.passRegistYn},
+			#{passRegistVO.fileGroupNo}
+		)
+	</insert>
+	
+	<select id="requestList" parameterType="hashMap" resultType="passRegistVO">
+		WITH T AS(
+			SELECT
+				PR.PASS_APP_NO,
+				PR.MEM_ID,
+                BP.BP_NM,
+                BP.BP_RPRSV_NM,
+				PR.PASS_REGIST_APLY_YMD,
+				PR.PASS_REGIST_TITLE,
+				PR.PASS_REGIST_YN,
+				PR.FILE_GROUP_NO,
+				ROW_NUMBER() OVER (ORDER BY PASS_APP_NO DESC) AS RNUM
+			FROM PASS_REGIST PR
+            JOIN
+                BP BP ON PR.MEM_ID = BP.MEM_ID
+			WHERE 1 = 1
+			<if test="memId != null and memId != ''">
+				AND PR.MEM_ID = #{memId}
+			</if>
+			<if test ="searchFilter != null and searchFilter != ''">
+				<choose>
+					<when test="searchFilter == 'PASS_REGIST_YN'">
+						AND PASS_REGIST_YN LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<when test="searchFilter == 'PASS_REGIST_YMD'">
+						AND PASS_REGIST_APLY_YMD LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<when test="searchFilter == 'PASS_REGIST_TITLE'">
+						AND PASS_REGIST_TITLE LIKE '%' || #{tableSearch} || '%'
+					</when>
+					<otherwise>
+						AND (PASS_REGIST_YN LIKE '%' || #{tableSearch} || '%'
+						OR PASS_REGIST_APLY_YMD LIKE '%' || #{tableSearch} || '%'
+						OR PASS_REGIST_TITLE LIKE '%' || #{tableSearch} || '%')
+					</otherwise>
+				</choose>
+			</if>
+		)
+		SELECT * FROM T
+		WHERE T.RNUM BETWEEN(#{currentPage} * 15) - (15 - 1) AND (#{currentPage} * 15)
+	</select>
+	
+	<select id="getRequestTotal" parameterType="hashMap" resultType="int">
+		SELECT
+			COUNT(*)
+		FROM PASS_REGIST
+		WHERE 1 = 1
+		<if test="memId != null and memId != ''">
+			AND MEM_ID = #{memId}
+		</if>
+		<if test ="searchFilter != null and searchFilter != ''">
+			<choose>
+				<when test="searchFilter == 'PASS_REGIST_YN'">
+					AND PASS_REGIST_YN LIKE '%' || #{tableSearch} || '%'
+				</when>
+				<when test="searchFilter == 'PASS_REGIST_YMD'">
+					AND PASS_REGIST_APLY_YMD LIKE '%' || #{tableSearch} || '%'
+				</when>
+				<when test="searchFilter == 'PASS_REGIST_TITLE'">
+					AND PASS_REGIST_TITLE LIKE '%' || #{tableSearch} || '%'
+				</when>
+				<otherwise>
+					AND (PASS_REGIST_YN LIKE '%' || #{tableSearch} || '%'
+					OR PASS_REGIST_APLY_YMD LIKE '%' || #{tableSearch} || '%'
+					OR PASS_REGIST_TITLE LIKE '%' || #{tableSearch} || '%')
+				</otherwise>
+			</choose>
+		</if>
+	</select>
+	
+	<select id="passRequestImage" parameterType="passRegistVO" resultType="fileDetailVO">
+		SELECT
+			FILE_SN,
+			FILE_GROUP_NO,
+			FILE_ORGNL_FILE_NM,
+			FILE_STRG_FILE_NM,
+			FILE_FILE_PATH_NM,
+			FILE_SZ,
+			FILE_FILE_EXTN_NM,
+			FILE_MIME,
+			FILE_FANCYSIZE,
+			FILE_FILE_STRG_YMD,
+			FILE_DWNLD_CNT
+		FROM
+			FILE_DETAIL
+		WHERE FILE_GROUP_NO = #{passRegistVO.fileGroupNo}
+	</select>
+	
+	<update id="requestAccept" parameterType="passRegistVO">
+		UPDATE PASS_REGIST
+		SET
+			PASS_REGIST_YN = 'Y'
+		WHERE PASS_APP_NO = #{passRegistVO.passAppNo}
+	</update>
+	
+	<update id="requestDecline" parameterType="passRegistVO">
+		UPDATE PASS_REGIST
+		SET
+			PASS_REGIST_YN = 'N'
+		WHERE PASS_APP_NO = #{passRegistVO.passAppNo}
+	</update>
+	
+</mapper>

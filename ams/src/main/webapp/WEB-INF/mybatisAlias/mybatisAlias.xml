@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<!-- 
+	[마이바티스] 스프링에서 "_"를 사용한 컬럼명을 사용 시(BOOK 테이블의 BOOK_ID)
+	카멜케이스로 읽어줌(bookId)
+	ex) 테이블 컬러명이 member_id인 경우 jsp화면단에서 이 값을 사용 시 memberId로 사용
+	-->
+	<settings>
+		<setting name="mapUnderscoreToCamelCase" value="true"/>
+	</settings>
+	<!-- 자주 사용하는 타입의 별칭을 세팅 -->
+	<typeAliases>
+		
+		<typeAlias type="kr.or.ddit.airplane.vo.AirScheduleVO" alias="airScheduleVO" />
+		<typeAlias type="kr.or.ddit.airplane.vo.AirLineVO" alias="airLineVO" />
+		<typeAlias type="kr.or.ddit.airplane.vo.InPlanVO" alias="inPlanVO" />
+		<typeAlias type="kr.or.ddit.airplane.vo.OutPlanVO" alias="outPlanVO" />
+		<typeAlias type="kr.or.ddit.airport.vo.FloorInfoVO" alias="floorInfoVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.AirportFacilityVO" alias="airportFacilityVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.AirportFacilityVO" alias="airportFacilityVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.AirportFacilityRSVVO" alias="airportFacilityRSVVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.AirportVehicleVO" alias="airportVehicleVO" />
+		<typeAlias type="kr.or.ddit.approv.vo.ApvDetailVO" alias="apvDetailVO" />
+		<typeAlias type="kr.or.ddit.approv.vo.ApvLineVO" alias="apvLineVO" />
+		<typeAlias type="kr.or.ddit.attendance.vo.AttendanceVO" alias="attendanceVO" />
+		<typeAlias type="kr.or.ddit.auth.vo.AuthVO" alias="authVO"/>
+		<typeAlias type="kr.or.ddit.auth.vo.AuthLinkVO" alias="authLinkVO" />
+		<!-- 24.09.19 추가 김인호 -->
+		<typeAlias type="kr.or.ddit.approv.vo.AuthorizationTypeVO" alias="authorizationTypeVO" />
+		
+		<typeAlias type="kr.or.ddit.auth.vo.AuthTypeVO" alias="authTypeVO" />
+		<typeAlias type="kr.or.ddit.human.vo.BpVO" alias="bpVO" />
+		<typeAlias type="kr.or.ddit.finance.vo.BudgetVO" alias="budgetVO" />
+		<typeAlias type="kr.or.ddit.finance.vo.BudgetHistoryVO" alias="budgetHistoryVO" />
+		<typeAlias type="kr.or.ddit.telecom.vo.ChatEmpVO" alias="chatEmpVO" />
+		<typeAlias type="kr.or.ddit.telecom.vo.ChatMsgVO" alias="chatMsgVO" />
+		<typeAlias type="kr.or.ddit.telecom.vo.ChatRoomVO" alias="chatRoomVO" />
+		<typeAlias type="kr.or.ddit.comn.vo.CommonCodeDetailVO" alias="commonCodeDetailVO" />
+		<typeAlias type="kr.or.ddit.comn.vo.CommonCodeGroupVO" alias="commonCodeGroupVO" />
+		<typeAlias type="kr.or.ddit.board.vo.CustBoardVO" alias="custBoardVO" />
+		<typeAlias type="kr.or.ddit.board.vo.CustReplyVO" alias="custReplyVO" />
+		<typeAlias type="kr.or.ddit.human.vo.DeptVO" alias="deptVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.DispVecVO" alias="dispVecVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.ZoneVO" alias="zoneVO" />
+		<typeAlias type="kr.or.ddit.approv.vo.ElecApvVO" alias="elecApvVO" />
+		<typeAlias type="kr.or.ddit.human.vo.EmployeeVO" alias="employeeVO" />		
+		<typeAlias type="kr.or.ddit.facility.vo.FacilityVO" alias="facilityVO" /><!-- 사내시설 -->	
+		<typeAlias type="kr.or.ddit.facility.vo.FacilityRsvVO" alias="facilityRsvVO" />
+		<typeAlias type="kr.or.ddit.comn.vo.FileDetailVO" alias="fileDetailVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.FranchiseVO" alias="franchiseVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.InventoryVO" alias="inventoryVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.ItemVO" alias="itemVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.ItemMidVO" alias="itemMidVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.ItemOrderVO" alias="itemOrderVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.ItemSmallVO" alias="itemSmallVO" />
+		<typeAlias type="kr.or.ddit.human.vo.JobGradeVO" alias="jobGradeVO" />
+		<typeAlias type="kr.or.ddit.human.vo.LeaveDetailVO" alias="LeaveDetailVO" />
+		<typeAlias type="kr.or.ddit.comn.vo.LogVO" alias="LogVO" />
+		<typeAlias type="kr.or.ddit.board.vo.BoardVO" alias="boardVO" /><!-- notice_board테이블 -->
+		<typeAlias type="kr.or.ddit.human.vo.MemberVO" alias="memberVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.MainTenanceVO" alias="mainTenanceVO" />
+		<typeAlias type="kr.or.ddit.human.vo.OutDetailVO" alias="OutDetailVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.ParkingVO" alias="parkingVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.ParkingRsvtVO" alias="parkingRsvtVO" />
+		<typeAlias type="kr.or.ddit.human.vo.PassDetailVO" alias="PassDetailVO" />
+		<typeAlias type="kr.or.ddit.human.vo.PassRegistVO" alias="PassRegistVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.PayAndPayVO" alias="PayAndPayVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.ReceiptCodeVO" alias="ReceiptCodeVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.ReceiptInfoVO" alias="ReceiptInfoVO" />
+		<typeAlias type="kr.or.ddit.human.vo.RegVecVO" alias="RegVecVO" />
+		<typeAlias type="kr.or.ddit.human.vo.SalaryVO" alias="SalaryVO" />
+		<typeAlias type="kr.or.ddit.calendar.vo.CalendarVO" alias="calendarVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.SecurityCheckResultsVO" alias="securityCheckResultsVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.SecurityChecklistVO" alias="securityChecklistVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.SecurityCompanyVO" alias="SecurityCompanyVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.SecurityFacilityVO" alias="SecurityFacilityVO" />
+		<typeAlias type="kr.or.ddit.facility.vo.SecurityWorkerVO" alias="securityWorkerVO" />
+		<typeAlias type="kr.or.ddit.human.vo.SubcontractorVO" alias="subcontractorVO" />
+		<typeAlias type="kr.or.ddit.approv.vo.TemplateSectionVO" alias="templateSectionVO" />
+		<typeAlias type="kr.or.ddit.human.vo.TripDetailVO" alias="tripDetailVO" />
+		<typeAlias type="kr.or.ddit.inven.vo.VendorVO" alias="vendorVO" />
+		<typeAlias type="kr.or.ddit.human.vo.WorkRecordVO" alias="workRecordVO" />
+		
+		<!-- 홍정호 24.9.21. 수정 -->
+		<typeAlias type="kr.or.ddit.comn.vo.AuthMenuVO" alias="authMenuVO"/>
+		<typeAlias type="kr.or.ddit.comn.vo.MnVO" alias="mnVO"/>
+		<typeAlias type="kr.or.ddit.comn.vo.SmMnVO" alias="smMnVO"/>
+		<typeAlias type="kr.or.ddit.comn.vo.MidMnVO" alias="midMnVO"/>
+		<typeAlias type="kr.or.ddit.comn.vo.BigMnVO" alias="bigMnVO"/>
+		
+		<!-- 홍정호 24.9.23. 재무관련 테이블 2종 추가 -->
+		<typeAlias type="kr.or.ddit.finance.vo.BudgetItemVO" alias="budgetItemVO"/>
+		<typeAlias type="kr.or.ddit.finance.vo.AccountItemVO" alias="accountItemVO"/>
+		
+		<!-- 홍정호 24.9.24. 거래내역 테이블 1종 추가 -->
+		<typeAlias type="kr.or.ddit.finance.vo.TransHistoryVO" alias="transHistoryVO"/>
+		
+		<!-- 김예영 24.9.30. 화상회의 video_chat 테이블 추가 -->
+		<typeAlias type="kr.or.ddit.videoChat.vo.VideoChatVO" alias="videoChatVO" />
+		<typeAlias type="kr.or.ddit.videoChat.vo.VideoChatMemberVO" alias="videoChatMemberVO" />
+		
+		<!-- 홍정호 24.10.4. 통계조회 페이지 테이블 3종 추가 -->
+		<typeAlias type="kr.or.ddit.statistics.vo.OpPerformanceVO" alias="opPerformanceVO"/>
+		<typeAlias type="kr.or.ddit.statistics.vo.PsgPerformanceVO" alias="psgPerformanceVO"/>
+		<typeAlias type="kr.or.ddit.statistics.vo.TpPerformanceVO" alias="tpPerformanceVO"/>
+		
+		<!-- 김인호 24.10.07 경비사용내역 -->
+		<typeAlias type="kr.or.ddit.approv.vo.UsageDetailVO" alias="usageDetailVO"/>
+		
+		
+		
+	</typeAliases>
+</configuration>

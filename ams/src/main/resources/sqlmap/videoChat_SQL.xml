@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.videoChat.mapper.VideoChatMapper">	
+	
+	<!-- 채팅방 추가 -->
+	<insert id="createRoom" parameterType="videoChatVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="roomNo">
+			SELECT NVL(MAX(ROOM_NO),0)+1 AS ROOM_NO
+			FROM VIDEO_CHAT
+		</selectKey>
+		INSERT INTO VIDEO_CHAT(ROOM_NO,
+							   ROOM_ID,
+							   ROOM_TITLE,
+							   ROOM_ST_DATE,
+							   ROOM_ED_DATE,
+							   ROOM_MAX_JOIN,
+							   ROOM_CURR_JOIN,
+							   MEM_ID)
+		VALUES (#{roomNo}
+			   , #{roomId}
+		       , #{roomTitle}
+		       , #{roomStDate}
+		       , #{roomEdDate}
+		       , 16
+		       , 0
+		       , #{memId}
+		       )
+	</insert>
+	
+	<insert id="insertCreator" parameterType="videoChatMemberVO">
+		INSERT INTO VIDEO_CHAT_MEMBER(ROOM_ID
+									  , MEM_ID
+									  , ROLE_ID)
+		VALUES (#{roomId}
+			    , #{memId}
+			    , #{roleId})
+	</insert>
+	
+	<!-- 채팅방 참여자 생성 -->
+	<insert id="insertMember" parameterType="videoChatMemberVO">
+		INSERT INTO VIDEO_CHAT_MEMBER(ROOM_ID
+									  , MEM_ID
+									  , ROLE_ID)
+		 VALUES (#{roomId},
+		 		 #{memId},
+		 		 #{roleId})
+	</insert>
+	
+	<!-- 채팅방 목록 조회 -->
+	<select id="getMyRoomIdList" parameterType="String" resultType="videoChatMemberVO">
+		SELECT ROOM_ID
+			   , MEM_ID
+			   , ROLE_ID
+		  FROM VIDEO_CHAT_MEMBER
+		  WHERE MEM_ID = #{memId}
+	</select>
+	
+	<!-- 채팅방 종료 -->
+	<delete id="deleteRoom" parameterType="String">
+		DELETE FROM VIDEO_CHAT
+		WHERE ROOM_ID = #{roomId}
+	</delete>
+	
+	<!-- 채팅방 참여자 목록 조회 -->
+	<select id="getMemList" resultType="videoChatMemberVO">
+		SELECT ROOM_ID
+			   , MEM_ID
+			   , ROLE_ID
+		FROM VIDEO_CHAT_MEMBER
+	</select>
+	
+	<select id="getMyRoomInfo" parameterType="String" resultType="videoChatVO">
+		SELECT ROOM_NO
+			   , ROOM_ID
+			   , ROOM_TITLE
+			   , ROOM_ST_DATE
+			   , ROOM_ED_DATE
+			   , ROOM_MAX_JOIN
+			   , ROOM_CURR_JOIN
+			   , MEM_ID
+		FROM VIDEO_CHAT
+		WHERE ROOM_ID = #{roomId}
+	</select>
+	
+	<select id="getScheduleVideoChat" parameterType="videoChatVO" resultType="videoChatVO">
+       SELECT M.ROLE_ID,
+		       V.ROOM_NO ,
+		       V.ROOM_ID ,
+		       V.ROOM_TITLE ,
+		       V.ROOM_ST_DATE ,
+		       V.ROOM_ED_DATE ,
+		       V.ROOM_MAX_JOIN,
+		       V.ROOM_CURR_JOIN ,
+		       V.MEM_ID ,
+		       C.SCHE_ID
+		FROM VIDEO_CHAT V
+		INNER JOIN CALENDAR C ON(C.ROOM_ID = V.ROOM_ID)
+		INNER JOIN VIDEO_CHAT_MEMBER M ON(M.ROOM_ID = V.ROOM_ID)
+		WHERE C.MEM_ID = #{memId}
+		AND C.ROOM_ID = #{roomId}
+		AND C.SCHE_ID =  #{scheId}
+		AND M.MEM_ID = #{memId}
+	</select>
+
+</mapper>

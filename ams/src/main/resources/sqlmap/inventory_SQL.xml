@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.inven.mapper.InventoryMapper">
+	
+	<sql id="where">
+		<if test="itemS!=null and itemS!=''">
+			AND   B.ITEM_S_NM = (SELECT ITEM_S_NM FROM ITEM_SMALL WHERE ITEM_S_CD = #{itemS}) 
+		</if>
+		<if test="itemM!=null and itemM!=''">
+			AND   C.ITEM_M_NM = (SELECT ITEM_M_NM FROM ITEM_MID WHERE ITEM_M_CD = #{itemM}) 
+		</if>
+		
+		<if test="gubun != null and gubun != ''">
+		<choose>
+			<when test="gubun == 'all'">
+				AND  (A.ITEM_NM LIKE '%' || #{keyword} || '%' <!-- 제품명 -->
+				OR   D.VDR_NM LIKE '%' || #{keyword} || '%') <!-- 제조사 -->
+			</when>
+			<when test="gubun == 'itemNm'">
+				AND A.ITEM_NM LIKE '%' || #{keyword} || '%'
+			</when>
+			<when test="gubun == 'vdrNm'">
+				AND D.VDR_NM LIKE '%' || #{keyword} || '%'
+			</when>
+			<when test="gubun == 'title'">
+				AND A.ITEM_NM LIKE '%' || #{keyword} || '%'
+			</when>
+				
+		</choose>
+		</if>
+	</sql>
+	
+	
+	<!-- 재고리스트 24.09.30 김인호 -->
+	<select id="list" parameterType="hashMap" resultMap="itemMap">
+	SELECT T.*
+	  FROM (
+		SELECT ROW_NUMBER() OVER (ORDER BY A.ITEM_CD ASC) AS RNUM
+			 , A.ITEM_CD, A.ITEM_NM, A.ITEM_STNDRD, A.ITEM_UNTPRC, A.ITEM_IMG, A.ITEM_S_CD, A.VENDOR_CD
+		     , B.INVEN_CURRENT, B.INVEN_SFINVC, B.INVEN_PLAN_QTY, B.INVENTORY_LOC_NO
+		  FROM ITEM A INNER JOIN INVENTORY B ON A.ITEM_CD = B.ITEM_CD
+	 	 WHERE 1=1
+	 	 
+		 <include refid="where"></include>   
+	  	 ) T
+	WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)
+	ORDER BY INVEN_SFINVC
+	</select>
+	
+	
+	<resultMap type="inventoryVO" id="inventoryMap">
+		<result property="itemCd" column="ITEM_CD"/>
+		<result property="invenCurrent" column="INVEN_CURRENT"/>
+		<result property="invenSfinvc" column="INVEN_SFINVC"/>
+		<result property="invenPlanQty" column="INVEN_PLAN_QTY"/>
+		<result property="inventoryLocNo" column="INVENTORY_LOC_NO"/>
+	</resultMap>
+	
+	<!-- 상세검색 -->
+	<select id="itemDetail" parameterType="String" resultMap="itemMap">
+		SELECT A.ITEM_CD, A.ITEM_NM, A.ITEM_STNDRD, A.ITEM_UNTPRC, A.ITEM_IMG
+		     , A.ITEM_S_CD, A.VENDOR_CD
+		     , B.PAP_CD, B.PAP_QTY, B.PAP_STAT, B.PAP_SPMT_YMD
+		     , C.VDR_NM, C.VDR_OWNER_NM, C.VDR_TYPE
+		  FROM ITEM A LEFT JOIN PAY_AND_PAY B ON A.ITEM_CD = B.ITEM_CD
+		  			  INNER JOIN VENDOR C ON A.VENDOR_CD = C.VENDOR_CD
+		 WHERE A.ITEM_CD =  #{itemCd} 
+	</select>
+	
+	<resultMap type="payAndPayVO" id="payAndPayMap">
+		<result property="papCd" column="PAP_CD"/>
+		<result property="itemCd" column="ITEM_CD"/>
+		<result property="papQty" column="PAP_QTY"/>
+		<result property="papStat" column="PAP_STAT"/>
+		<result property="papSpmtYmd" column="PAP_SPMT_YMD"/>
+	</resultMap>
+	
+	<update id="itemUpdate" parameterType="itemVO">
+		UPDATE ITEM
+		   SET ITEM_UNTPRC = #{itemUntprc}
+		 WHERE ITEM_CD = #{itemCd}
+	</update>
+	
+	<!-- 상품코드(소분류) 리스트 -->
+	<select id="itemSmallList" resultType="itemSmallVO">
+		SELECT ITEM_S_CD, ITEM_M_CD, ITEM_S_NM
+  		  FROM ITEM_SMALL
+	</select>
+	
+	<!-- 거래처 리스트 -->
+	<select id="vendorList" resultType="vendorVO">
+		SELECT VENDOR_CD, VDR_OWNER_NM, VDR_TYPE
+		     , VDR_TEL, VDR_ADDR, VDR_ADDR_DET
+		     , VDR_NM, VDR_REGIST_NO
+		  FROM VENDOR
+	</select>
+	
+	<!-- 자재추가 -->
+	<insert id="itemInsert" parameterType="itemVO">
+	<selectKey resultType="String" order="BEFORE" keyProperty="itemCd">
+		SELECT 'ITEM' || LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(SUBSTR(ITEM_CD, 5))), 0) + 1), 3, '0') 
+          FROM ITEM
+	</selectKey>
+		INSERT INTO ITEM(ITEM_CD, ITEM_NM, ITEM_STNDRD, ITEM_UNTPRC, ITEM_IMG, ITEM_S_CD, VENDOR_CD)
+		VALUES (#{itemCd}, #{itemNm}, #{itemStndrd}, #{itemUntprc}, 
+				<choose>
+		        	<when test="itemImg != null">#{itemImg}</when>
+		   	   		<otherwise>NULL</otherwise>
+		       </choose>, #{itemSCd}, #{vendorCd})
+	</insert>
+	
+	<select id="itemList" parameterType="hashMap" resultMap="itemMap">
+	SELECT T.*
+	  FROM (
+		SELECT ROW_NUMBER() OVER (ORDER BY A.ITEM_CD DESC) AS RNUM
+			 , A.ITEM_CD, A.ITEM_NM, A.ITEM_STNDRD, A.ITEM_UNTPRC, A.ITEM_IMG, A.VENDOR_CD
+		     , B.ITEM_S_CD, B.ITEM_S_NM
+		     , C.ITEM_M_CD, C.ITEM_M_NM
+		     , D.VDR_OWNER_NM, D.VDR_TYPE, D.VDR_TEL
+		     , D.VDR_ADDR, D.VDR_ADDR_DET, D.VDR_NM, D.VDR_REGIST_NO
+		  FROM ITEM A INNER JOIN ITEM_SMALL B ON A.ITEM_S_CD = B.ITEM_S_CD
+		              INNER JOIN ITEM_MID C ON B.ITEM_M_CD = C.ITEM_M_CD
+		              INNER JOIN VENDOR D ON A.VENDOR_CD = D.VENDOR_CD
+		 WHERE 1=1
+		 <include refid="where"></include>
+<!-- 		 ORDER BY A.ITEM_CD DESC -->
+		 ) T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)          
+	</select>
+	
+	<resultMap type="itemVO" id="itemMap">
+		<result property="itemCd" column="ITEM_CD"/>
+		<result property="itemNm" column="ITEM_NM"/>
+		<result property="itemStndrd" column="ITEM_STNDRD"/>
+		<result property="itemUntprc" column="ITEM_UNTPRC"/>
+		<result property="itemImg" column="ITEM_IMG"/>
+		<result property="itemSCd" column="ITEM_S_CD"/>
+		<result property="vendorCd" column="VENDOR_CD"/>
+		<result property="rnum" column="RNUM"/>
+		<association property="inventoryVO" resultMap="inventoryMap"></association>
+		<association property="itemSmallVO" resultMap="itemSmallMap"></association>
+		<association property="itemMidVO" resultMap="itemMidMap"></association>
+		<association property="vendorVO" resultMap="vendorMap"></association>
+	</resultMap>
+	
+	<resultMap type="itemSmallVO" id="itemSmallMap">
+		<result property="itemSCd" column="ITEM_S_CD"/>
+		<result property="itemMCd" column="ITEM_M_CD"/>
+		<result property="itemSNm" column="ITEM_S_NM"/>
+	</resultMap>
+	
+	<resultMap type="itemMidVO" id="itemMidMap">
+		<result property="itemMCd" column="ITEM_M_CD"/>
+		<result property="itemMNm" column="ITEM_M_NM"/>
+	</resultMap>
+	
+	<resultMap type="vendorVO" id="vendorMap">
+		<result property="vdrRegistNo" column="VDR_REGIST_NO"/>
+		<result property="vendorCd" column="VENDOR_CD"/>
+		<result property="vdrOwnerNm" column="VDR_OWNER_NM"/>
+		<result property="vdrType" column="VDR_TYPE"/>
+		<result property="vdrTel" column="VDR_TEL"/>
+		<result property="vdrAddr" column="VDR_ADDR"/>
+		<result property="vdrAddrDet" column="VDR_ADDR_DET"/>
+		<result property="vdrNm" column="VDR_NM"/>
+	</resultMap>
+
+	
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		  FROM ITEM A INNER JOIN ITEM_SMALL B ON A.ITEM_S_CD = B.ITEM_S_CD
+		              INNER JOIN ITEM_MID C ON B.ITEM_M_CD = C.ITEM_M_CD
+		              INNER JOIN VENDOR D ON A.VENDOR_CD = D.VENDOR_CD
+		 WHERE 1=1
+		 <include refid="where"></include>
+	</select>
+	
+	<select id="getTotal2" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		  FROM ITEM A INNER JOIN INVENTORY B ON A.ITEM_CD = B.ITEM_CD
+		 WHERE 1=1
+	</select>
+	
+	<select id="itemMidList" resultType="itemMidVO">
+		SELECT ITEM_M_CD, ITEM_M_NM
+  		  FROM ITEM_MID
+	</select>
+	
+	<select id="itemSdetail" resultType="itemSmallVO">
+		SELECT ITEM_S_CD, ITEM_M_CD, ITEM_S_NM
+		  FROM ITEM_SMALL
+		 WHERE ITEM_M_CD = #{itemMCd}
+	</select>
+	
+	<select id="itemSmallList2" resultType="ItemSmallVO">
+		SELECT ITEM_S_CD, ITEM_M_CD, ITEM_S_NM
+  		  FROM ITEM_SMALL
+  		 WHERE ITEM_M_CD = #{itemM}
+	</select>
+	
+	<delete id="itemDelete" parameterType="String">
+		DELETE ITEM
+ 		 WHERE ITEM_CD = #{itemCd}
+	</delete>
+	
+	<select id="itemList2" resultType="itemVO">
+		SELECT ITEM_CD, ITEM_NM, ITEM_STNDRD, ITEM_UNTPRC
+		     , ITEM_IMG, ITEM_S_CD, VENDOR_CD
+		  FROM ITEM
+	</select>
+	
+	<!-- 거래처 상세 -->
+	<select id="vendorDetail" parameterType="String" resultType="vendorVO">
+		SELECT VENDOR_CD, VDR_OWNER_NM, VDR_TYPE, VDR_TEL, VDR_ADDR, VDR_ADDR_DET, VDR_NM, VDR_REGIST_NO
+		  FROM VENDOR
+		 WHERE VENDOR_CD = #{vendorCd}
+	</select>
+	
+	<!-- 품목상세 -->
+	<select id="itemDetail2" resultType="itemVO">
+		SELECT ITEM_CD, ITEM_NM, ITEM_STNDRD, ITEM_UNTPRC, ITEM_S_CD, VENDOR_CD
+		  FROM ITEM
+		 WHERE VENDOR_CD = #{vendorCd}
+	</select>
+	
+	<!--  -->
+	<select id="itemCdDetail" resultType="itemVO">
+		SELECT ITEM_CD, ITEM_NM, ITEM_STNDRD, ITEM_UNTPRC, ITEM_S_CD, VENDOR_CD
+		  FROM ITEM
+		 WHERE ITEM_CD = #{itemCd}
+	</select>
+	
+	<!-- 발주서 등록 -->
+	<insert id="orderInsert" parameterType="itemOrderVO">
+<!-- 	<selectKey keyProperty="" order="BEFORE" resultType="int"> -->
+<!-- 	</selectKey> -->
+		INSERT INTO ITEM_ORDER(ORDER_NO, MEM_ID, ORDER_REG_YMD, ORDER_DUE_YMD, ORDER_QTY, ORDER_AMT, ORDER_STATUS, ITEM_CD)
+		VALUES((SELECT NVL(MAX(ORDER_NO)+1, TO_CHAR(SYSDATE,'YYYYMMDD')||'000')+1
+		  FROM ITEM_ORDER),#{memId},TO_CHAR(SYSDATE,'YYYYMMDD'),#{orderDueYmd},#{orderQty},#{orderAmt},'N',#{itemCd})
+	</insert>
+	
+	<select id="itemOrderDetail" parameterType="long" resultMap="itemOrderMap">
+		SELECT A.ORDER_NO, A.MEM_ID, A.ORDER_REG_YMD, A.ORDER_QTY
+			 , SUBSTR(A.ORDER_DUE_YMD,1,4)||'-'||SUBSTR(A.ORDER_DUE_YMD,5,2)||'-'||SUBSTR(A.ORDER_DUE_YMD,7,2) ORDER_DUE_YMD
+		     , A.ORDER_AMT, A.ORDER_STATUS, A.ITEM_CD
+		     , B.EMP_NM , C.ITEM_NM, C.ITEM_UNTPRC, D.VDR_NM, D.VDR_OWNER_NM, D.VDR_TYPE
+		     , D.VDR_TEL, D.VDR_ADDR, D.VDR_ADDR_DET
+		  FROM ITEM_ORDER A INNER JOIN EMPLOYEE B ON A.MEM_ID = B.MEM_ID
+		                    INNER JOIN ITEM C ON A.ITEM_CD = C.ITEM_CD
+		                    INNER JOIN VENDOR D ON C.VENDOR_CD = D.VENDOR_CD
+		 WHERE ORDER_NO = #{orderNo}
+	</select>
+	
+	<resultMap type="itemOrderVO" id="itemOrderMap">
+		<result property="orderNo" column="ORDER_NO"/>
+		<result property="elecApvNo" column="ELEC_APV_NO"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="orderRegYmd" column="ORDER_REG_YMD"/>
+		<result property="orderDueYmd" column="ORDER_DUE_YMD"/>
+		<result property="orderQty" column="ORDER_QTY"/>
+		<result property="orderAmt" column="ORDER_AMT"/>
+		<result property="orderStatus" column="ORDER_STATUS"/>
+		<result property="itemCd" column="ITEM_CD"/>
+		<association property="employeeVO" resultMap="employeeMap"></association>
+		<association property="itemVO" resultMap="itemMap"></association>
+		<association property="vendorVO" resultMap="vendorMap"></association>
+	</resultMap>
+	
+	<resultMap type="employeeVO" id="employeeMap">
+		<result property="empImgNm" column="EMP_IMG_NM"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empRrno" column="EMP_RRNO"/>
+		<result property="empEml" column="EMP_EML"/>
+		<result property="empMoblphon" column="EMP_MOBLPHON"/>
+		<result property="empZip" column="EMP_ZIP"/>
+		<result property="empRoadNmAddr" column="EMP_ROAD_NM_ADDR"/>
+		<result property="empDaddr" column="EMP_DADDR"/>
+		<result property="empImgUrl" column="EMP_IMG_URL"/>
+		<result property="empYrycDaycnt" column="EMP_YRYC_DAYCNT"/>
+		<result property="empHdofStat" column="EMP_HDOF_STAT"/>
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD"/>
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD"/>
+		<result property="empAtrzSgn" column="EMP_ATRZ_SGN"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="empGender" column="EMP_GENDER"/>
+	</resultMap>
+	
+	<update id="itemOderUpdate" parameterType="itemOrderVO">
+		UPDATE ITEM_ORDER
+		   SET ORDER_STATUS = 'Y'
+		 WHERE ORDER_NO = #{orderNo}
+	</update>
+	
+	<select id="invenList" parameterType="String" resultType="inventoryVO">
+		SELECT ITEM_CD, INVEN_CURRENT, INVEN_SFINVC, INVEN_PLAN_QTY
+		  FROM INVENTORY
+		 WHERE ITEM_CD = #{itemCd}
+		 
+	</select>
+	
+	<update id="invenUpdate" parameterType="inventoryVO">
+		UPDATE INVENTORY
+		   SET INVEN_CURRENT = #{invenCurrent}
+		 WHERE ITEM_CD = #{itemCd}
+	</update>
+	
+	<insert id="invenInsert" parameterType="inventoryVO">
+		INSERT INTO INVENTORY(ITEM_CD, INVEN_CURRENT, INVEN_SFINVC, INVEN_PLAN_QTY)
+		VALUES(#{itemCd}, #{invenCurrent}, 5, 0)
+	</insert>
+	
+	<select id="itemOrderList" resultType="itemOrderVO">
+		SELECT ORDER_NO, ELEC_APV_NO, MEM_ID, ORDER_REG_YMD, ORDER_DUE_YMD, ORDER_QTY, ORDER_AMT, ORDER_STATUS, ITEM_CD
+		  FROM ITEM_ORDER
+		 WHERE ORDER_NO = #{orderNo}
+	</select>
+	
+	<select id="totalOrderList" resultMap="itemOrderMap">
+		SELECT A.ORDER_NO, A.ELEC_APV_NO, A.MEM_ID
+			 , SUBSTR(A.ORDER_REG_YMD,1,4)||'-'||SUBSTR(A.ORDER_REG_YMD,5,2)||'-'||SUBSTR(A.ORDER_REG_YMD,7,2) ORDER_REG_YMD
+		     , A.ORDER_DUE_YMD, A.ORDER_QTY, A.ORDER_AMT, A.ORDER_STATUS
+		     , B.ITEM_NM, C.EMP_NM
+		  FROM ITEM_ORDER A INNER JOIN ITEM B ON A.ITEM_CD = B.ITEM_CD
+		                    INNER JOIN EMPLOYEE C ON A.MEM_ID = C.MEM_ID
+		 ORDER BY A.ORDER_NO DESC
+	</select>
+	
+	<!-- 수불부 -->
+	<select id="papList" resultType="payAndPayVO">
+		SELECT PAP_CD, ITEM_CD, PAP_QTY, PAP_STAT, PAP_SPMT_YMD
+  		  FROM PAY_AND_PAY
+	</select>
+	
+	<!-- 수불 상세 -->
+	<select id="papDetail" resultType="payAndPayVO">
+		SELECT PAP_CD, ITEM_CD, PAP_QTY, PAP_STAT
+			 , SUBSTR(PAP_SPMT_YMD,1,4)||'-'||SUBSTR(PAP_SPMT_YMD,5,2)||'-'||SUBSTR(PAP_SPMT_YMD,7,2) PAP_SPMT_YMD
+		  FROM PAY_AND_PAY
+		 WHERE ITEM_CD = #{itemCd}
+	</select>
+	
+	<!-- 수불현황 등록 -->
+	<insert id="papInsert" parameterType="payAndPayVO">
+		INSERT INTO PAY_AND_PAY(PAP_CD, ITEM_CD, PAP_QTY, PAP_STAT, PAP_SPMT_YMD)
+		VALUES ((SELECT NVL(MAX(PAP_CD)+1, TO_CHAR(SYSDATE,'YYYYMMDD')||'00')+1
+		  		 FROM PAY_AND_PAY),#{itemCd},#{papQty},#{papStat},TO_CHAR(SYSDATE,'YYYYMMDD'))
+	</insert>
+	
+	
+</mapper>

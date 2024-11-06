@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.finance.mapper.FinanceMapper">
+
+	<select id="bdgItemVOList" parameterType="hashMap" resultType="budgetItemVO">
+		SELECT BDG_ITEM_CD,
+			   BDG_ITEM_NM,
+			   BDG_ITEM_YR
+		FROM BUDGET_ITEM
+		WHERE 1 = 1
+		<if test="bdgItemYr != null and bdgItemYr!=''">
+			AND BDG_ITEM_YR = #{bdgItemYr}
+		</if>
+		<if test="searchBoxKeyword != null and searchBoxKeyword!=''">
+            AND (BDG_ITEM_CD LIKE '%' || #{searchBoxKeyword} || '%'
+            OR BDG_ITEM_NM LIKE '%' || #{searchBoxKeyword} || '%')
+		</if>
+	</select>
+	
+	<select id="accItemVOList" resultType="accountItemVO">
+		SELECT ACC_ITEM_CD,
+			   ACC_ITEM_NM,
+			   ACC_ITEM_YR,
+			   USE_YN
+		FROM ACCOUNT_ITEM
+	</select>
+	
+	<select id="registBudgetItemCheck" parameterType="budgetItemVO" resultType="int">
+		SELECT COUNT(*)
+		FROM BUDGET_ITEM
+		WHERE BDG_ITEM_CD = #{budgetItemVO.bdgItemCd}
+	</select>
+	
+	<select id="registAccountItemCheck" parameterType="accountItemVO" resultType="int">
+		SELECT COUNT(*)
+		FROM ACCOUNT_ITEM
+		WHERE ACC_ITEM_CD = #{accountItemVO.accItemCd}
+	</select>
+	
+	<insert id="registBudgetItem" parameterType="budgetItemVO">
+		INSERT INTO BUDGET_ITEM (BDG_ITEM_CD, BDG_ITEM_NM, BDG_ITEM_YR)
+		VALUES(
+			#{budgetItemVO.bdgItemCd},
+			#{budgetItemVO.bdgItemNm},
+			TO_CHAR(SYSDATE, 'YYYY')
+		)
+	</insert>
+	
+	<insert id="registAccountItem" parameterType="accountItemVO">
+		INSERT INTO ACCOUNT_ITEM (ACC_ITEM_CD, ACC_ITEM_NM, ACC_ITEM_YR, USE_YN)
+		VALUES(
+			#{accountItemVO.accItemCd},
+			#{accountItemVO.accItemNm},
+			TO_CHAR(SYSDATE, 'YYYY'),
+			'Y'
+		)
+	</insert>
+	
+	<update id="editBudgetItem" parameterType="budgetItemVO">
+		UPDATE BUDGET_ITEM
+		SET BDG_ITEM_NM = #{budgetItemVO.bdgItemNm}
+		WHERE BDG_ITEM_CD = #{budgetItemVO.bdgItemCd}
+	</update>
+	
+	<update id="editAccountItem" parameterType="accountItemVO">
+		UPDATE ACCOUNT_ITEM
+		SET ACC_ITEM_NM = #{accountItemVO.accItemNm}
+		WHERE ACC_ITEM_CD = #{accountItemVO.accItemCd}
+	</update>
+	
+	<delete id="deleteBudgetItem" parameterType="list">
+			DELETE FROM BUDGET_ITEM
+			WHERE BDG_ITEM_CD in(
+			<foreach collection="list" item="budgetItemVO" separator=",">
+				#{budgetItemVO.bdgItemCd}
+			</foreach>
+			)
+	</delete>
+	
+	<delete id="deleteAccountItem" parameterType="list">
+		DELETE FROM ACCOUNT_ITEM
+		WHERE ACC_ITEM_CD in(
+		<foreach collection="list" item="accountItemVO" separator=",">
+			#{accountItemVO.accItemCd}
+		</foreach>
+		)
+	</delete>
+
+	<resultMap type="transHistoryVO" id="transMap">
+		<result property="transHistoryNo" column="TRANS_HISTORY_NO"/>
+		<result property="transDate" column="TRANS_DATE"/>
+		<result property="vendorCd" column="VENDOR_CD"/>
+		<result property="transReason" column="TRANS_REASON"/>
+		<result property="transAmt" column="TRANS_AMT"/>
+		<result property="transType" column="TRANS_TYPE"/>
+		<association property="vendorVO" resultMap="vendorMap"/>
+	</resultMap>
+
+	<resultMap type="vendorVO" id="vendorMap">
+		<result property="vendorCd" column="VENDOR_CD"/>
+		<result property="vdrOwnerNm" column="VDR_OWNER_NM"/>
+		<result property="vdrType" column="VDR_TYPE"/>
+		<result property="vdrTel" column="VDR_TEL"/>
+		<result property="vdrAddr" column="VDR_ADDR"/>
+		<result property="vdrAddrDet" column="VDR_ADDR_DET"/>
+		<result property="vdrNm" column="VDR_NM"/>		
+	</resultMap>	
+	
+	<select id="transHistoryVOList" parameterType="hashMap" resultMap="transMap">
+		WITH T AS(
+			SELECT TH.TRANS_HISTORY_NO,
+				   TH.TRANS_DATE,
+				   VE.VDR_NM,
+				   TH.VENDOR_CD,
+				   TH.TRANS_REASON,
+				   TH.TRANS_AMT,
+				   TH.TRANS_TYPE,
+				   ROW_NUMBER() OVER (ORDER BY TRANS_HISTORY_NO DESC) AS RNUM
+			FROM TRANS_HISTORY TH
+			JOIN
+				VENDOR VE ON TH.VENDOR_CD = VE.VENDOR_CD
+			WHERE 1 = 1
+			<if test="startDate != null and startDate !='' and endDate != null and endDate != ''">
+				AND TRANS_DATE BETWEEN #{startDate} AND #{endDate}
+			</if>
+		)
+		SELECT * FROM T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 10) - (10 -1) AND (#{currentPage} * 10)
+	</select>
+	
+	<select id="getTransTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+			FROM TRANS_HISTORY
+			WHERE 1 = 1
+			<if test="startDate != null and startDate !='' and endDate != null and endDate != ''">
+				AND TRANS_DATE BETWEEN #{startDate} AND #{endDate}
+			</if>
+	</select>
+	
+	<select id="vendorVOList" resultType="vendorVO">
+		SELECT
+			VENDOR_CD,
+			VDR_OWNER_NM,
+			VDR_TYPE,
+			VDR_TEL,
+			VDR_ADDR,
+			VDR_ADDR_DET,
+			VDR_NM,
+			VDR_REGIST_NO
+		FROM VENDOR
+	</select>
+	
+	<insert id="registTransHistory" parameterType="transHistoryVO">
+		INSERT INTO TRANS_HISTORY
+		(
+		    TRANS_HISTORY_NO,
+		    TRANS_DATE,
+		    VENDOR_CD,
+		    TRANS_REASON,
+		    TRANS_AMT,
+		    TRANS_TYPE
+		)
+		VALUES
+		(
+		    (
+		        'TH' || TO_CHAR(SYSDATE, 'YYYYMMDD') || LPAD(
+		            NVL((
+		                SELECT SUBSTR(MAX(TRANS_HISTORY_NO), -4) + 1
+		                FROM TRANS_HISTORY
+		            ), 1), 4, '0'
+		        )
+		    ),
+		    TO_CHAR(SYSDATE, 'YYYY-MM-DD'),
+		    #{transHistoryVO.vendorCd},
+		    #{transHistoryVO.transReason},
+		    #{transHistoryVO.transAmt},
+		    #{transHistoryVO.transType}
+		)
+	</insert>
+	
+	<update id="editTransHistory" parameterType="transHistoryVO">
+		UPDATE TRANS_HISTORY
+		SET
+			VENDOR_CD = #{transHistoryVO.vendorCd},
+			TRANS_REASON = #{transHistoryVO.transReason},
+			TRANS_AMT = #{transHistoryVO.transAmt},
+			TRANS_TYPE = #{transHistoryVO.transType}
+		WHERE
+			TRANS_HISTORY_NO = #{transHistoryVO.transHistoryNo} 
+	</update>
+	
+	<delete id="deleteTransHistory" parameterType="list">
+		DELETE FROM TRANS_HISTORY
+		WHERE TRANS_HISTORY_NO IN(
+		<foreach collection="list" item="transHistoryVO" separator=",">
+			#{transHistoryVO.transHistoryNo}
+		</foreach>
+		)
+	</delete>
+	
+	<select id="vendorVOListMap" parameterType="hashMap" resultType="vendorVO">
+		WITH T AS(
+			SELECT
+				VENDOR_CD,
+				VDR_OWNER_NM,
+				VDR_TYPE,
+				VDR_TEL,
+				VDR_ADDR,
+				VDR_ADDR_DET,
+				VDR_NM,
+				VDR_REGIST_NO,
+				ROW_NUMBER() OVER (ORDER BY VENDOR_CD DESC) AS RNUM
+			FROM VENDOR
+			WHERE 1 = 1
+		    <if test="searchFilter != null and searchFilter != ''">
+			    <choose>
+					<when test="searchFilter == 'VDR_NM'">
+						AND VDR_NM LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_TYPE'">
+						AND VDR_TYPE LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_OWNER_NM'">
+						AND VDR_OWNER_NM LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_REGIST_NO'">
+						AND VDR_REGIST_NO LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_ADDR'">
+						AND VDR_ADDR LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_TEL'">
+						AND VDR_TEL LIKE '%' || #{table_search} || '%'
+					</when>
+					<otherwise>
+						AND VDR_NM LIKE '%' || #{table_search} || '%'
+						OR VDR_TYPE LIKE '%' || #{table_search} || '%'
+						OR VDR_OWNER_NM LIKE '%' || #{table_search} || '%'
+						OR VDR_REGIST_NO LIKE '%' || #{table_search} || '%'
+						OR VDR_ADDR LIKE '%' || #{table_search} || '%'
+						OR VDR_TEL LIKE '%' || #{table_search} || '%'
+					</otherwise>
+				</choose>
+			</if>
+		)
+		SELECT * FROM T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)
+	</select>
+	
+	<insert id="registVendor" parameterType="vendorVO">
+		INSERT INTO VENDOR(
+			VENDOR_CD,
+			VDR_OWNER_NM,
+			VDR_TYPE,
+			VDR_TEL,
+			VDR_ADDR,
+			VDR_ADDR_DET,
+			VDR_NM,
+			VDR_REGIST_NO			
+		)
+		VALUES
+		(
+			(
+		        'V' || LPAD(TO_NUMBER(SUBSTR((
+		            SELECT MAX(VENDOR_CD) FROM VENDOR
+		        ), 2)) + 1, 4, '0')
+			),
+			#{vendorVO.vdrOwnerNm},
+			#{vendorVO.vdrType},
+			#{vendorVO.vdrTel},
+			#{vendorVO.vdrAddr},
+			#{vendorVO.vdrAddrDet},
+			#{vendorVO.vdrNm},
+			#{vendorVO.vdrRegistNo}
+		)
+	</insert>
+	
+	<update id="editVendor" parameterType="vendorVO">
+		UPDATE VENDOR
+		SET
+			VDR_OWNER_NM = #{vendorVO.vdrOwnerNm},
+			VDR_TYPE = #{vendorVO.vdrType},
+			VDR_TEL = #{vendorVO.vdrTel},
+			VDR_ADDR = #{vendorVO.vdrAddr},
+			VDR_ADDR_DET = #{vendorVO.vdrAddrDet},
+			VDR_NM = #{vendorVO.vdrNm},
+			VDR_REGIST_NO = #{vendorVO.vdrNm}	
+		WHERE VENDOR_CD = #{vendorVO.vendorCd}
+	</update>
+	
+	<delete id="deleteVendor" parameterType="list">
+		DELETE FROM VENDOR
+		WHERE VENDOR_CD IN(
+		<foreach collection="list" item="vendorVO" separator=",">
+			#{vendorVO.vendorCd}
+		</foreach>
+ 		)
+	</delete>
+	
+	<select id="vendorTotal" parameterType="hashMap" resultType="int">
+			SELECT
+				COUNT(*)
+			FROM VENDOR
+			WHERE 1 = 1
+		    <if test="searchFilter != null and searchFilter != ''">
+			    <choose>
+					<when test="searchFilter == 'VDR_NM'">
+						AND VDR_NM LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_TYPE'">
+						AND VDR_TYPE LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_OWNER_NM'">
+						AND VDR_OWNER_NM LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_REGIST_NO'">
+						AND VDR_REGIST_NO LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_ADDR'">
+						AND VDR_ADDR LIKE '%' || #{table_search} || '%'
+					</when>
+					<when test="searchFilter == 'VDR_TEL'">
+						AND VDR_TEL LIKE '%' || #{table_search} || '%'
+					</when>
+					<otherwise>
+						AND VDR_NM LIKE '%' || #{table_search} || '%'
+						OR VDR_TYPE LIKE '%' || #{table_search} || '%'
+						OR VDR_OWNER_NM LIKE '%' || #{table_search} || '%'
+						OR VDR_REGIST_NO LIKE '%' || #{table_search} || '%'
+						OR VDR_ADDR LIKE '%' || #{table_search} || '%'
+						OR VDR_TEL LIKE '%' || #{table_search} || '%'
+					</otherwise>
+				</choose>
+			</if>
+	</select>
+</mapper>

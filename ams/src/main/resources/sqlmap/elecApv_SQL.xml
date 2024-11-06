@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approv.mapper.ElecApvMapper">
+	
+	<sql id="where">
+		<if test="gubun != null and gubun != ''">
+			<choose>
+				<when test="gubun == 'all'">
+					AND (ELEC_APV_TITLE LIKE '%' || #{keyword} || '%'
+					 OR EMP_NM LIKE '%' || #{keyword} || '%')
+				</when>
+				<when test="gubun == 'title'">
+					AND ELEC_APV_TITLE LIKE '%' || #{keyword} || '%'
+				</when>
+				<when test="gubun == 'author'">
+					AND EMP_NM LIKE '%' || #{keyword} || '%'
+				</when>
+			</choose>
+		</if>
+	</sql>
+	
+	<!-- 기안문서 목록 24.09.23 김인호 -->
+	<!-- TO_CHAR(A.ELEC_APV_REG_DATE,'YYYY-MM-DD') ELEC_APV 테이블 컬럼값 varchar2로 변경하기 -->
+
+	<select id="elecApvList" parameterType="hashMap" resultMap="elecApvMap">
+		SELECT T.*
+		  FROM (
+			SELECT ROW_NUMBER() OVER (ORDER BY A.ELEC_APV_NO DESC) AS RNUM
+	             , A.ELEC_APV_NO, TO_CHAR(A.ELEC_APV_REG_DATE,'YYYY-MM-DD') ELEC_APV_REG_DATE
+	             , TO_CHAR(TO_DATE(A.ELEC_APV_LAST_ATRZ_YMD, 'YYYYMMDD'), 'YYYY-MM-DD') ELEC_APV_LAST_ATRZ_YMD
+	             , A.ELEC_APV_STAT, A.ELEC_APV_CN, A.ELEC_APV_RTRVL_YMD
+	             , A.FILE_GROUP_NO, A.TEMP_SE_CD, A.MEM_ID, A.ELEC_APV_TITLE
+	             , LISTAGG(B.MEM_ID, ',') WITHIN GROUP (ORDER BY B.APV_LINE_DET_ATRZ_YMD) AS APV_IDS
+	             , MAX(B.APV_YN) AS APV_YN
+	             , MAX(B.APV_LINE_FIN_YN) AS APV_LINE_FIN_YN
+	             , MAX(B.APV_DEC_REASON) AS APV_DEC_REASON
+	             , MAX(B.APV_LINE_DET_ATRZ_YMD) AS APV_LINE_DET_ATRZ_YMD
+	             , C.COM_DET_CD_CN, C.COM_DET_CD
+	             , D.EMP_NM
+	        FROM ELEC_APV A LEFT JOIN APV_DETAIL B ON A.ELEC_APV_NO = B.ELEC_APV_NO
+					        INNER JOIN COMMON_CODE_DETAIL C ON A.ELEC_APV_STAT = C.COM_DET_CD
+					        INNER JOIN EMPLOYEE D ON D.MEM_ID = A.MEM_ID
+	        WHERE 1 = 1
+	        <include refid="where"></include>
+	        <if test="startDate != null and startDate != ''">
+<!-- 		        <![CDATA[ -->
+	 	        	AND TO_CHAR(A.ELEC_APV_REG_DATE,'YYYY-MM-DD') >= #{startDate} 
+<!-- 	 	        	]]>  -->
+		    </if>
+		    <if test="endDate != null and endDate != ''">
+<!-- 		    	<![CDATA[ -->
+			        AND TO_CHAR(A.ELEC_APV_REG_DATE,'YYYY-MM-DD') &lt;= #{endDate} 
+<!-- 			       ]]>  -->
+		    </if>
+		    
+	        GROUP BY A.ELEC_APV_NO, A.ELEC_APV_REG_DATE, A.ELEC_APV_LAST_ATRZ_YMD
+	               , A.ELEC_APV_STAT, A.ELEC_APV_CN, A.ELEC_APV_RTRVL_YMD
+	               , A.FILE_GROUP_NO, A.TEMP_SE_CD, A.MEM_ID, A.ELEC_APV_TITLE
+	               , C.COM_DET_CD_CN, C.COM_DET_CD, D.EMP_NM
+		
+         ) T
+    	WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)
+	</select>
+	
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+	  	 SELECT COUNT(*)
+			FROM ELEC_APV A INNER JOIN EMPLOYEE B ON A.MEM_ID = B.MEM_ID
+			WHERE 1 = 1
+			<include refid="where"></include>
+	  </select>
+	
+	<!-- 24.09.23 김인호 -->
+	<resultMap type="elecApvVO" id="elecApvMap">
+		<result property="elecApvTitle" column="ELEC_APV_TITLE"/>
+		<result property="elecApvNo" column="ELEC_APV_NO"/>
+		<result property="elecApvRegDate" column="ELEC_APV_REG_DATE"/>
+		<result property="elecApvLastAtrzYmd" column="ELEC_APV_LAST_ATRZ_YMD"/>
+		<result property="elecApvStat" column="ELEC_APV_STAT"/>
+		<result property="elecApvCn" column="ELEC_APV_CN"/>
+		<result property="elecApvRtrvlYmd" column="ELEC_APV_RTRVL_YMD"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="tempSeCd" column="TEMP_SE_CD"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="rnum"  column="RNUM" />
+		<result property="lvUseDay" column="LV_USE_DAY"/>
+		<association property="commonCodeDetailVO" resultMap="commonCodeDetailMap"></association>
+		<association property="employeeVO" resultMap="employeeMap"></association>
+		<association property="apvDetailVO" resultMap="apvDetailMap"></association>
+	</resultMap>
+	
+	<!-- 24.09.23 김인호 -->
+	<resultMap type="commonCodeDetailVO" id="commonCodeDetailMap">
+		<result property="comDetCd" column="COM_DET_CD"/>
+		<result property="comCdGroup" column="COM_CD_GROUP"/>
+		<result property="comDetCdNm" column="COM_DET_CD_NM"/>
+		<result property="comDetCdCn" column="COM_DET_CD_CN"/>
+	</resultMap>
+	
+	<!-- 24.09.23 김인호 -->
+	<resultMap type="employeeVO" id="employeeMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="empNm" column="EMP_NM"/>
+		<result property="empRrno" column="EMP_RRNO"/>
+		<result property="empEml" column="EMP_EML"/>
+		<result property="empMoblphon" column="EMP_MOBLPHON"/>
+		<result property="empZip" column="EMP_ZIP"/>
+		<result property="empRoadNmAddr" column="EMP_ROAD_NM_ADDR"/>
+		<result property="empDaddr" column="EMP_DADDR"/>
+		<result property="empImgUrl" column="EMP_IMG_URL"/>
+		<result property="empYrycDaycnt" column="EMP_YRYC_DAYCNT"/>
+		<result property="empHdofStat" column="EMP_HDOF_STAT"/>
+		<result property="empJncmpYmd" column="EMP_JNCMP_YMD"/>
+		<result property="empRsgntnYmd" column="EMP_RSGNTN_YMD"/>
+		<result property="empAtrzSgn" column="EMP_ATRZ_SGN"/>
+		<result property="jbgdCd" column="JBGD_CD"/>
+		<result property="deptCd" column="DEPT_CD"/>
+		<result property="empGender" column="EMP_GENDER"/>
+	</resultMap>
+	
+	<!-- 결재문서 기안 24.09.21 -->
+	<insert id="elecApvInsert" parameterType="elecApvVO">
+	<selectKey resultType="String" order="BEFORE" keyProperty="elecApvNo">
+		SELECT 'ELECAPV' || 
+	            LPAD(
+	                TO_NUMBER(SUBSTR(NVL(MAX(ELEC_APV_NO), 'ELECAPV' || TO_CHAR(SYSDATE, 'YYYYMMDD') || '000'), 8)) + 1
+	                , 11, '0')
+	      FROM ELEC_APV
+	     WHERE SUBSTR(ELEC_APV_NO, 1, 15) = 'ELECAPV' || TO_CHAR(SYSDATE, 'YYYYMMDD')
+	</selectKey>
+		INSERT INTO ELEC_APV(
+		            ELEC_APV_NO
+		          , ELEC_APV_REG_DATE
+		          , ELEC_APV_LAST_ATRZ_YMD
+		          , ELEC_APV_STAT
+		          , ELEC_APV_RTRVL_YMD
+		          , FILE_GROUP_NO
+		          , TEMP_SE_CD
+		          , MEM_ID
+		          , ELEC_APV_TITLE)
+		VALUES (#{elecApvNo},SYSDATE,NULL,'H1',NULL,
+					<choose>
+			        	<when test="fileGroupNo != null">#{fileGroupNo}</when>
+			   	   		<otherwise>NULL</otherwise>
+			       </choose>,#{tempSeCd},#{memId},#{elecApvTitle})
+	</insert>
+	
+	<!-- 결재선 지정 24.09.21 -->
+	<!-- param employeeVO 에서 apvdeatilVO로 -->
+	<insert id="apvDetailInsert" parameterType="ApvDetailVO">
+	<selectKey resultType="int" order="BEFORE" keyProperty="apvLineDetNo">
+		SELECT NVL(MAX(APV_LINE_DET_NO),0)+1
+		  FROM APV_DETAIL
+		 WHERE ELEC_APV_NO = #{elecApvNo}
+	</selectKey>
+		INSERT INTO APV_DETAIL(
+		            APV_LINE_DET_NO
+		          , ELEC_APV_NO
+		          , APV_LINE_DET_ATRZ_YMD
+		          , APV_LINE_DET_TYPE
+		          , APV_DEC_REASON
+		          , APV_YN
+		          , APV_LINE_FIN_YN
+		          , APV_LINE_NO
+		          , MEM_ID)
+		VALUES (#{apvLineDetNo},#{elecApvNo}
+				, <choose>
+			        	<when test="apvLineDetNo == 1">TO_CHAR(SYSDATE,'YYYY-MM-DD')</when>
+			   	   		<otherwise>NULL</otherwise>
+			       </choose>
+				,'처리',NULL
+				, <choose>
+		        	<when test="apvLineDetNo == 1">'Y'</when>
+		   	   		<otherwise>'N'</otherwise>
+			      </choose>
+				,  #{apvLineFinYn}
+<!-- 				<choose> -->
+<!-- 			        	<when test="apvLineDetNo == 4">'Y'</when> -->
+<!-- 			   	   		<otherwise>'N'</otherwise> -->
+<!-- 			       </choose> -->
+				, NULL,#{memId})
+	</insert>
+	
+	<!-- 나의 기안문서 상세(결재 진행중) -->
+	
+	<select id="myElecApvListDetail" resultMap="elecApvDetailMap">
+		SELECT A.ELEC_APV_NO, A.ELEC_APV_REG_DATE, A.ELEC_APV_LAST_ATRZ_YMD
+		     , A.ELEC_APV_STAT, A.ELEC_APV_CN, A.ELEC_APV_RTRVL_YMD
+		     , A.FILE_GROUP_NO, A.TEMP_SE_CD, A.MEM_ID, A.ELEC_APV_TITLE
+		     , B.APV_LINE_DET_NO, B.MEM_ID AS APV_ID, B.APV_YN, B.APV_LINE_DET_ATRZ_YMD
+		     , B.APV_LINE_DET_ATRZ_YMD, B.APV_YN, B.APV_LINE_FIN_YN, B.APV_ATRZ_SGN
+		     , C.COM_DET_CD_CN
+		     , D.EMP_NM, D.EMP_ATRZ_SGN
+		     , F.DEPT_CD, F.DEPT_NM
+		     , G.JBGD_CD, G.JBGD_NM
+		     <!-- , H.LV_DET_CD, TO_CHAR(TO_DATE(H.LV_BGNG_YMD),'YYYY-MM-DD') LV_BGNG_YMD -->
+		     <!-- , TO_CHAR(TO_DATE(H.LV_END_YMD),'YYYY-MM-DD') LV_END_YMD, H.LV_DET_TYPE, H.LV_DET_RSN, H.LV_USE_DAY --> 
+		  FROM ELEC_APV A INNER JOIN APV_DETAIL B ON A.ELEC_APV_NO = B.ELEC_APV_NO
+		                  INNER JOIN COMMON_CODE_DETAIL C ON A.ELEC_APV_STAT =  C.COM_DET_CD
+		                  INNER JOIN EMPLOYEE D ON D.MEM_ID = B.MEM_ID
+		                  INNER JOIN DEPARTMENT F ON D.DEPT_CD = F.DEPT_CD
+		                  INNER JOIN JOB_GRADE G ON D.JBGD_CD = G.JBGD_CD
+		                  <!-- INNER JOIN LEAVE_DETAIL H ON A.ELEC_APV_NO = H.ELEC_APV_NO -->
+		 WHERE A.ELEC_APV_NO = #{elecApvNo}
+		   AND B.ELEC_APV_NO = A.ELEC_APV_NO
+		 ORDER BY B.APV_LINE_DET_NO  
+<!-- 		   AND C.COM_DET_CD = 'H1' -->
+	</select>
+	
+	<resultMap type="elecApvVO" id="elecApvDetailMap">
+		<result property="elecApvTitle" column="ELEC_APV_TITLE"/>
+		<result property="elecApvNo" column="ELEC_APV_NO"/>
+		<result property="elecApvRegDate" column="ELEC_APV_REG_DATE"/>
+		<result property="elecApvLastAtrzYmd" column="ELEC_APV_LAST_ATRZ_YMD"/>
+		<result property="elecApvStat" column="ELEC_APV_STAT"/>
+		<result property="elecApvCn" column="ELEC_APV_CN"/>
+		<result property="elecApvRtrvlYmd" column="ELEC_APV_RTRVL_YMD"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="tempSeCd" column="TEMP_SE_CD"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="apvId" column="APV_ID" />
+		<association property="deptVO" resultMap="deptMap"></association>
+		<association property="jobGradeVO" resultMap="jobGradeMap"></association>
+		<association property="employeeVO" resultMap="employeeMap"></association>
+		<association property="commonCodeDetailVO" resultMap="commonCodeDetailMap"></association>
+		<association property="apvDetailVO" resultMap="apvDetailMap"></association>
+		<association property="leaveDetailVO" resultMap="leaveDetailMap"></association>
+	</resultMap>
+	
+	<resultMap type="apvDetailVO" id="apvDetailMap">
+		<result property="apvLineDetNo" column="APV_LINE_DET_NO"/>
+		<result property="elecApvNo" column="ELEC_APV_NO"/>
+		<result property="apvLineDetAtrzYmd" column="APV_LINE_DET_ATRZ_YMD"/>
+		<result property="apvLineDetType" column="APV_LINE_DET_TYPE"/>
+		<result property="apvDecReason" column="APV_DEC_REASON"/>
+		<result property="apvYn" column="APV_YN"/>
+		<result property="apvLineFinYn" column="APV_LINE_FIN_YN"/>
+		<result property="apvLineNo" column="APV_LINE_NO"/>
+		<result property="memId" column="MEM_ID"/>
+		<result property="apvAtrzSgn" column="APV_ATRZ_SGN"/>
+		<result property="apvIds" column="APV_IDS"/>
+	</resultMap>
+	
+	<resultMap type="deptVO" id="deptMap">
+		<result property="deptCd" column="DEPT_CD" javaType="String" />
+		<result property="deptNm" column="DEPT_NM" javaType="String" />
+	</resultMap>
+	
+	<resultMap type="jobGradeVO" id="jobGradeMap">
+		<result property="jbgdCd" column="JBGD_CD" javaType="String"/>
+		<result property="jbgdNm" column="JBGD_NM" javaType="String"/>
+	</resultMap>
+	
+	<resultMap type="leaveDetailVO" id="leaveDetailMap">
+		<result property="lvDetCd" column="LV_DET_CD"/>
+		<result property="elecApvNo" column="ELEC_APV_NO"/>
+		<result property="lvBgngYmd" column="LV_BGNG_YMD"/>
+		<result property="lvEndYmd" column="LV_END_YMD"/>
+		<result property="lvDetType" column="LV_DET_TYPE"/>
+		<result property="lvDetRsn" column="LV_DET_RSN"/>
+		<result property="lvUseDay" column="LV_USE_DAY"/>
+	</resultMap>
+	
+	<!-- 결재 승인 -->
+	<update id="apvDetailUpdate" parameterType="elecApvVO">
+		UPDATE APV_DETAIL
+		   SET APV_ATRZ_SGN = '/resources/images/approval.jpg'
+		     , APV_LINE_DET_ATRZ_YMD = TO_CHAR(SYSDATE,'YYYY-MM-DD')
+		     , APV_YN = 'Y'
+		 WHERE ELEC_APV_NO = #{elecApvNo}
+		   AND MEM_ID = #{memId}
+	</update>
+	
+	<!-- 결재 반려 -->
+	<update id="prDetailUpdate" parameterType="elecApvVO">
+		UPDATE APV_DETAIL
+		   SET APV_ATRZ_SGN = '/resources/images/pr.jpg'
+		     , APV_LINE_DET_ATRZ_YMD = TO_CHAR(SYSDATE,'YYYY-MM-DD')
+		     , APV_DEC_REASON = #{apvDecReason}
+		     , APV_YN = 'Y'
+		 WHERE ELEC_APV_NO = #{elecApvNo}
+		   AND MEM_ID = #{memId}
+	</update>
+	
+	<select id="getApvLineFinYn" parameterType="apvDetailVO" resultType="apvDetailVO">
+		SELECT APV_LINE_DET_NO, ELEC_APV_NO, APV_LINE_DET_ATRZ_YMD
+		     , APV_LINE_DET_TYPE, APV_DEC_REASON, APV_YN, APV_LINE_FIN_YN
+		     , APV_LINE_NO, MEM_ID, APV_ATRZ_SGN
+		  FROM APV_DETAIL
+		 WHERE ELEC_APV_NO = #{elecApvNo}
+		   AND MEM_ID = #{memId}
+	</select>
+	
+	<update id="statUpdate" parameterType="elecApvVO">
+		UPDATE ELEC_APV
+		   SET ELEC_APV_STAT ='H3'
+		     , ELEC_APV_LAST_ATRZ_YMD = TO_CHAR(SYSDATE,'YYYYMMDD')
+		 WHERE ELEC_APV_NO = #{elecApvNo}
+	</update>
+
+	<update id="statUpdate2" parameterType="elecApvVO">
+		UPDATE ELEC_APV
+		   SET ELEC_APV_STAT ='H4'
+		     , ELEC_APV_LAST_ATRZ_YMD = TO_CHAR(SYSDATE,'YYYYMMDD')
+		 WHERE ELEC_APV_NO = #{elecApvNo}
+	</update>
+	
+	<select id="getApvLineFinYn1" parameterType="apvDetailVO" resultType="apvDetailVO">
+		SELECT APV_DEC_REASON
+		  FROM APV_DETAIL
+		 WHERE ELEC_APV_NO = #{elecApvNo}
+	</select>
+
+	<select id="comCodeList" resultType="commonCodeDetailVO">
+		SELECT COM_DET_CD, COM_CD_GROUP, COM_DET_CD_NM, COM_DET_CD_CN
+  		  FROM COMMON_CODE_DETAIL
+	</select>
+	
+	<!-- 내가 결재해야할 결재대기문서 -->
+	<select id="waitElec" resultMap="elecApvMap">
+	   <![CDATA[
+	SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY A.ELEC_APV_NO DESC) AS RNUM
+	             , A.ELEC_APV_NO
+                 , TO_CHAR(A.ELEC_APV_REG_DATE, 'YYYY-MM-DD')  ELEC_APV_REG_DATE
+	             , TO_CHAR(TO_DATE(A.ELEC_APV_LAST_ATRZ_YMD, 'YYYYMMDD'), 'YYYY-MM-DD') ELEC_APV_LAST_ATRZ_YMD
+	             , A.ELEC_APV_STAT, A.ELEC_APV_CN, A.ELEC_APV_RTRVL_YMD
+	             , A.FILE_GROUP_NO, A.TEMP_SE_CD, A.MEM_ID, A.ELEC_APV_TITLE
+	             , LISTAGG(B.MEM_ID, ',') WITHIN GROUP (ORDER BY B.APV_LINE_DET_ATRZ_YMD) AS APV_IDS
+	             , MAX(B.APV_YN) AS APV_YN
+	             , MAX(B.APV_LINE_FIN_YN) AS APV_LINE_FIN_YN
+	             , MAX(B.APV_DEC_REASON) AS APV_DEC_REASON
+	             , MAX(B.APV_LINE_DET_ATRZ_YMD) AS APV_LINE_DET_ATRZ_YMD
+	             , C.COM_DET_CD_CN, C.COM_DET_CD
+	             , D.EMP_NM
+                 , E.TEMP_SE_NM
+	        FROM ELEC_APV A LEFT JOIN APV_DETAIL B ON A.ELEC_APV_NO = B.ELEC_APV_NO
+					        INNER JOIN COMMON_CODE_DETAIL C ON A.ELEC_APV_STAT = C.COM_DET_CD
+					        INNER JOIN EMPLOYEE D ON D.MEM_ID = A.MEM_ID
+                            INNER JOIN TEMPLATE_SECTION E ON A.TEMP_SE_CD = E.TEMP_SE_CD
+	        WHERE 1 = 1
+            AND C.COM_DET_CD ='H1'
+            GROUP BY A.ELEC_APV_NO, A.ELEC_APV_REG_DATE, A.ELEC_APV_LAST_ATRZ_YMD
+	               , A.ELEC_APV_STAT, A.ELEC_APV_CN, A.ELEC_APV_RTRVL_YMD
+	               , A.FILE_GROUP_NO, A.TEMP_SE_CD, A.MEM_ID, A.ELEC_APV_TITLE
+	               , C.COM_DET_CD_CN, C.COM_DET_CD, D.EMP_NM , E.TEMP_SE_NM
+                   ) WHERE ROWNUM <= 5
+             ]]>
+	</select>
+	
+	<!-- 휴가차감 수정필요 -->
+	<update id="yrycDaycntUpdate" parameterType="elecApvVO">
+		UPDATE EMPLOYEE
+		   SET EMP_YRYC_DAYCNT = #{empYrycDaycnt}
+		 WHERE MEM_ID = #{memId}
+	</update>
+	
+	<!-- 내가 기안한 결재대기문서 -->
+	
+	<!-- 후처리 -->
+	<select id="checkNo" parameterType="elecApvVO" resultMap="elecApvMap">
+		SELECT A.ELEC_APV_NO, A.MEM_ID, A.ELEC_APV_STAT, A.TEMP_SE_CD
+		     , B.LV_USE_DAY, C.EMP_YRYC_DAYCNT
+		  FROM ELEC_APV A INNER JOIN LEAVE_DETAIL B ON A.ELEC_APV_NO = B.ELEC_APV_NO
+		                  INNER JOIN EMPLOYEE C ON A.MEM_ID = C.MEM_ID
+		 WHERE A.ELEC_APV_NO = #{elecApvNo}
+	</select>
+	
+	
+	
+</mapper>

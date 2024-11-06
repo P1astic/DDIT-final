@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.facility.mapper.AirportFacilityMapper">
+	
+	<sql id="where">
+		<if test="gubun != null and gubun != ''">
+		<choose>
+			<when test="gubun == 'all'">
+				AND  (APT_FAC_RSVT_TTL LIKE '%' || #{keyword} || '%' <!-- 제목 -->
+				OR   APT_FAC_RSVT_NM LIKE '%' || #{keyword} || '%') <!-- 제조사 -->
+			</when>
+			<when test="gubun == 'title'">
+				AND APT_FAC_RSVT_TTL LIKE '%' || #{keyword} || '%'
+			</when>
+			<when test="gubun == 'author'">
+				AND APT_FAC_RSVT_NM LIKE '%' || #{keyword} || '%'
+			</when>
+		</choose>
+		</if>
+	</sql>
+	
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		  FROM AIRPORT_FACILITY_RSV
+		 WHERE 1=1
+		 <include refid="where"></include>
+	</select>
+
+	<select id="list1" parameterType="hashMap" resultType="airportFacilityRSVVO">
+	SELECT T.*
+      FROM (
+		SELECT ROW_NUMBER() OVER (ORDER BY APT_FAC_RSVT_NO DESC) AS RNUM
+			 , APT_FAC_RSVT_NO, TO_CHAR(APT_FAC_RSVT_TTL||'[비밀글]') APT_FAC_RSVT_TTL, APT_FAC_RSVT_NM
+		     , APT_FAC_RSVT_MOBLPHON, APT_FAC_EML, APT_FAC_RSVT_UTZTN_RSN
+		     , APT_FAC_RSVT_UTZTN_NOPE, SUBSTR(APT_FAC_RSVT_YMD,1,4)||'-'||SUBSTR(APT_FAC_RSVT_YMD,5,2)||'-'||SUBSTR(APT_FAC_RSVT_YMD,7,2) APT_FAC_RSVT_YMD, APT_FAC_RSVT_BGNG_TM
+		     , APT_FAC_RSVT_END_TM, APT_FAC_RSVT_RTRCN_YN
+		  FROM AIRPORT_FACILITY_RSV
+		 WHERE 1=1
+		  <include refid="where"></include>
+		  ) T
+     WHERE T.RNUM BETWEEN (#{currentPage} * 15) - (15 -1) AND (#{currentPage} * 15)
+	</select>
+
+	<select id="list" resultType="airportFacilityRSVVO">
+		SELECT APT_FAC_RSVT_NO, TO_CHAR(APT_FAC_RSVT_TTL||'[비밀글]') APT_FAC_RSVT_TTL, APT_FAC_RSVT_NM
+		     , APT_FAC_RSVT_MOBLPHON, APT_FAC_EML, APT_FAC_RSVT_UTZTN_RSN
+		     , APT_FAC_RSVT_UTZTN_NOPE, SUBSTR(APT_FAC_RSVT_YMD,1,4)||'-'||SUBSTR(APT_FAC_RSVT_YMD,5,2)||'-'||SUBSTR(APT_FAC_RSVT_YMD,7,2) APT_FAC_RSVT_YMD, APT_FAC_RSVT_BGNG_TM
+		     , APT_FAC_RSVT_END_TM, APT_FAC_RSVT_RTRCN_YN
+		  FROM AIRPORT_FACILITY_RSV
+	</select>
+	
+	<select id="airportFacilityList" resultType="airportFacilityVO">
+		SELECT APT_FAC_NO, APT_FAC_LOCATION, APT_FAC_NM
+  		  FROM AIRPORT_FACILITY
+	</select>	
+	
+	
+	<insert id="registPost" parameterType="airportFacilityRSVVO">
+	<selectKey resultType="String" order="BEFORE" keyProperty="aptFacRsvtNo">
+		SELECT NVL(MAX(APT_FAC_RSVT_NO), TO_CHAR(SYSDATE, 'YYYYMMDD') || '0000') +1
+		  FROM AIRPORT_FACILITY_RSV
+		 WHERE APT_FAC_RSVT_NO LIKE TO_CHAR(SYSDATE, 'YYYYMMDD') || '%'
+	</selectKey>
+		INSERT INTO AIRPORT_FACILITY_RSV(APT_FAC_RSVT_NO, APT_FAC_RSVT_TTL, APT_FAC_RSVT_NM, APT_FAC_RSVT_MOBLPHON, APT_FAC_EML, APT_FAC_RSVT_UTZTN_RSN, APT_FAC_RSVT_UTZTN_NOPE, APT_FAC_RSVT_YMD, APT_FAC_RSVT_BGNG_TM, APT_FAC_RSVT_END_TM, APT_FAC_RSVT_RTRCN_YN, APT_FAC_NO)
+		VALUES (#{aptFacRsvtNo},#{aptFacRsvtTtl},#{aptFacRsvtNm},#{aptFacRsvtMoblphon},#{aptFacEml},#{aptFacRsvtUtztnRsn},#{aptFacRsvtUtztnNope},#{aptFacRsvtYmd},#{aptFacRsvtBgngTm},#{aptFacRsvtEndTm},'N',#{aptFacNo})
+	</insert>
+	
+	<!-- 예약 가능한 시간 체크 -->
+	<select id="timeSetting" resultType="AirportFacilityRSVVO">
+		SELECT APT_FAC_RSVT_BGNG_TM, APT_FAC_RSVT_END_TM
+		  FROM   AIRPORT_FACILITY_RSV
+		 WHERE  APT_FAC_RSVT_YMD LIKE #{aptFacRsvtYmd}
+	</select>
+	
+	<!-- 예약 상세 -->
+	<select id="detail" parameterType="String" resultMap="airportFacilityRSVMap">
+		SELECT A.APT_FAC_RSVT_NO, A.APT_FAC_RSVT_TTL, A.APT_FAC_RSVT_NM
+		     , TO_CHAR(SUBSTR(A.APT_FAC_RSVT_MOBLPHON,1,3)||'-'||SUBSTR(A.APT_FAC_RSVT_MOBLPHON,4,4)||'-'||SUBSTR(A.APT_FAC_RSVT_MOBLPHON,8,4)) APT_FAC_RSVT_MOBLPHON
+		     , A.APT_FAC_EML, A.APT_FAC_RSVT_UTZTN_RSN, A.APT_FAC_RSVT_UTZTN_NOPE
+		     , TO_CHAR(SUBSTR(A.APT_FAC_RSVT_YMD,1,4)||'-'||SUBSTR(A.APT_FAC_RSVT_YMD,5,2)||'-'||SUBSTR(A.APT_FAC_RSVT_YMD,7,2)) APT_FAC_RSVT_YMD
+		     , TO_CHAR(SUBSTR(A.APT_FAC_RSVT_BGNG_TM,1,2)||':'||SUBSTR(A.APT_FAC_RSVT_BGNG_TM,3,2)) APT_FAC_RSVT_BGNG_TM
+		     , TO_CHAR(SUBSTR(A.APT_FAC_RSVT_END_TM,1,2)||':'||SUBSTR(A.APT_FAC_RSVT_END_TM,3,2)) APT_FAC_RSVT_END_TM
+		     , A.APT_FAC_RSVT_RTRCN_YN, A.APT_FAC_NO, B.APT_FAC_NM
+		  FROM AIRPORT_FACILITY_RSV A INNER JOIN AIRPORT_FACILITY B ON A.APT_FAC_NO = B.APT_FAC_NO
+		 WHERE APT_FAC_RSVT_NO = #{aptFacRsvtNo}
+	</select>
+	
+	<resultMap type="airportFacilityRSVVO" id="airportFacilityRSVMap">
+		<result property="aptFacRsvtNo" column="APT_FAC_RSVT_NO"/>
+		<result property="aptFacRsvtTtl" column="APT_FAC_RSVT_TTL"/>
+		<result property="aptFacRsvtNm" column="APT_FAC_RSVT_NM"/>
+		<result property="aptFacRsvtMoblphon" column="APT_FAC_RSVT_MOBLPHON"/>
+		<result property="aptFacEml" column="APT_FAC_EML"/>
+		<result property="aptFacRsvtUtztnRsn" column="APT_FAC_RSVT_UTZTN_RSN"/>
+		<result property="aptFacRsvtUtztnNope" column="APT_FAC_RSVT_UTZTN_NOPE"/>
+		<result property="aptFacRsvtYmd" column="APT_FAC_RSVT_YMD"/>
+		<result property="aptFacRsvtBgngTm" column="APT_FAC_RSVT_BGNG_TM"/>
+		<result property="aptFacRsvtEndTm" column="APT_FAC_RSVT_END_TM"/>
+		<result property="aptFacRsvtRtrcnYn" column="APT_FAC_RSVT_RTRCN_YN"/>
+		<result property="aptFacNo" column="APT_FAC_NO"/>
+		<association property="airportFacilityVO" resultMap="airportFacilityMap"></association>
+	</resultMap>
+	
+	<resultMap type="airportFacilityVO" id="airportFacilityMap">
+		<result property="aptFacNm" column="APT_FAC_NM"/>
+		<result property="aptFacNo" column="APT_FAC_NO"/>
+		<result property="aptFacLocation" column="APT_FAC_LOCATION"/>
+	</resultMap>
+	
+	<update id="update" parameterType="airportFacilityRSVVO">
+		UPDATE AIRPORT_FACILITY_RSV
+		   SET APT_FAC_RSVT_NM = #{aptFacRsvtNm},
+		       APT_FAC_RSVT_UTZTN_NOPE = #{aptFacRsvtUtztnNope},
+		       APT_FAC_EML = #{aptFacEml},
+		       APT_FAC_RSVT_MOBLPHON = #{aptFacRsvtMoblphon},
+		       APT_FAC_NO = #{aptFacNo},
+		       APT_FAC_RSVT_TTL = #{aptFacRsvtTtl},
+		       APT_FAC_RSVT_UTZTN_RSN = #{aptFacRsvtUtztnRsn},
+		       APT_FAC_RSVT_YMD = #{aptFacRsvtYmd},
+		       APT_FAC_RSVT_BGNG_TM = #{aptFacRsvtBgngTm},
+		       APT_FAC_RSVT_END_TM = #{aptFacRsvtEndTm}
+		 WHERE APT_FAC_RSVT_NO = #{aptFacRsvtNo}
+	</update>
+	
+	<delete id="delete" parameterType="String">
+		DELETE AIRPORT_FACILITY_RSV
+ 		 WHERE APT_FAC_RSVT_NO = #{aptFacRsvtNo}
+	</delete>
+	
+</mapper>

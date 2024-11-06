@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.airport.mapper.FloorInfoMapper">
+
+	<select id="getList" parameterType="String" resultMap="floorInfoMap">
+		SELECT F.MEM_ID
+				, F.FRN_SE_CD
+				, F.FRN_FLOOR_LOCATION
+				, F.FRN_OPEN_TM
+				, F.FRN_CLOSE_TM
+				, F.FRN_PROD
+				, F.FRN_RENT_COST
+				, F.FRN_SEC_COST
+				, F.FRN_AREA_SIZE
+				, F.FRN_ENTER_DATE
+				, F.FRN_KEY_COST
+				, F.FRN_ZONE_LOCATION
+				, I.MAP_ID
+				, I.MAP_NM
+				, I.MAP_IMG_URL
+				, I.MAP_IMG_NM
+				, C.COM_DET_CD
+			    , C.COM_CD_GROUP
+			    , C.COM_DET_CD_NM
+			    , C.COM_DET_CD_CN
+			FROM FRANCHISE F
+			INNER JOIN FLOOR_INFO I ON (I.MEM_ID = F.MEM_ID)
+			INNER JOIN COMMON_CODE_DETAIL C ON (F.FRN_SE_CD = C.COM_DET_CD)
+			WHERE F.FRN_FLOOR_LOCATION = #{frnFloorLocation}
+	</select>
+	
+	<resultMap type="floorInfoVO" id="floorInfoMap">
+		<result property="mapId" column="MAP_ID"/>
+		<result property="mapNm" column="MAP_NM"/>
+		<result property="mapImgUrl" column="MAP_IMG_URL"/>
+		<result property="mapImgNm" column="MAP_IMG_NM"/>
+		<result property="memId" column="MEM_ID"/>
+		<association property="franchiseVO" resultMap="franchiseMap"></association>
+		<association property="airLineVO" resultMap="airLineMap"></association>
+	</resultMap>
+	
+	<resultMap type="franchiseVO" id="franchiseMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="frnSeCd" column="FRN_SE_CD"/>
+		<result property="frnFloorLocation" column="FRN_FLOOR_LOCATION"/>
+		<result property="frnOpenTm" column="FRN_OPEN_TM"/>
+		<result property="frnCloseTm" column="FRN_CLOSE_TM"/>
+		<result property="frnProd" column="FRN_PROD"/>
+		<result property="frnRentCost" column="FRN_RENT_COST"/>
+		<result property="frnSecCost" column="FRN_SEC_COST"/>
+		<result property="frnAreaSize" column="FRN_AREA_SIZE"/>
+		<result property="frnEnterDate" column="FRN_ENTER_DATE"/>
+		<result property="frnKeyCost" column="FRN_KEY_COST"/>
+		<result property="frnZoneLocation" column="FRN_ZONE_LOCATION"/>
+		<association property="commonCodeDetailVO" resultMap="commonCodeDetailMap"></association>
+	</resultMap>
+	
+	<resultMap type="commonCodeDetailVo" id="commonCodeDetailMap">
+		<result property="comDetCd" column="COM_DET_CD"/>
+		<result property="comCdGroup" column="COM_CD_GROUP"/>
+		<result property="comDetCdNm" column="COM_DET_CD_NM"/>
+		<result property="comDetCdCn" column="COM_DET_CD_CN"/>
+	</resultMap>
+	
+	<select id="getFloorHtml" parameterType="String" resultType="java.sql.Clob">
+		SELECT MAP_HTML
+		FROM FLOOR_INFO
+		WHERE MAP_ID = #{mapId}
+	</select>
+	
+	<select id="getInfo" parameterType="String" resultType="floorInfoVO">
+		SELECT MAP_ID
+			   , MAP_NM
+			   , MAP_IMG_URL
+			   , MAP_IMG_NM
+			   , MEM_ID
+		   FROM FLOOR_INFO
+		   WHERE MAP_ID = #{mapId}
+	</select>
+	
+	<select id="getDetail" parameterType="String" resultType="franchiseVO">
+		SELECT MEM_ID
+			   , FRN_SE_CD
+			   , FRN_FLOOR_LOCATION
+			   , FRN_OPEN_TM
+			   , FRN_CLOSE_TM
+			   , FRN_PROD
+			   , FRN_RENT_COST
+			   , FRN_SEC_COST
+			   , FRN_AREA_SIZE
+			   , FRN_ENTER_DATE
+			   , FRN_KEY_COST
+			   , FRN_ZONE_LOCATION
+		  FROM FRANCHISE
+		 WHERE MEM_ID = #{memId} 
+	</select>
+	
+	<select id="getType" parameterType="String" resultType="String">
+		SELECT COM_DET_CD_CN
+		  FROM COMMON_CODE_DETAIL
+		 WHERE COM_DET_CD = #{comDetCd}
+	</select>
+	
+	<select id="getCounter" parameterType="floorInfoVO" resultMap="floorInfoMap">
+		SELECT F.MAP_ID
+		       , F.MAP_NM
+		       , F.MAP_FLOOR
+		       , F.MAP_IMG_URL
+		       , F.MAP_IMG_NM
+		       , F.MEM_ID
+		       , F.MAP_INOUT
+		       , A.AIR_COUNTER
+		       , A.AIR_GATE
+		       , A.AIR_NTNLTY_NM
+		       , A.AIR_IATA
+		       , A.AIR_ICAO
+		       , A.AIR_URL
+		       , A.AIR_IMG
+		       , A.AIR_KR_NM
+		       , A.AIR_EN_NM
+		FROM FLOOR_INFO F
+		INNER JOIN AIRLINE A ON (A.MEM_ID = F.MEM_ID)
+		WHERE F.MEM_ID = #{memId}
+		AND F.MAP_FLOOR = #{mapFloor}
+		AND F.MAP_INOUT = #{mapInout}
+	</select>
+	
+	<resultMap type="airLineVO" id="airLineMap">
+		<result property="memId" column="MEM_ID"/>
+		<result property="airCounter" column="AIR_COUNTER"/>
+		<result property="airGate" column="AIR_GATE"/>
+		<result property="airNtnltyNm" column="AIR_NTNLTY_NM"/>
+		<result property="airIata" column="AIR_IATA"/>
+		<result property="airIcao" column="AIR_ICAO"/>
+		<result property="airUrl" column="AIR_URL"/>
+		<result property="airImg" column="AIR_IMG"/>
+		<result property="airEnNm" column="AIR_EN_NM"/>
+		<result property="airKrNm" column="AIR_KR_NM"/>	
+	</resultMap>
+
+</mapper>

@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.attendance.mapper.AttendanceMapper">
+
+
+
+	<!-- 전체 데이터 값 -->
+	<select id="searchliST" parameterType="attendanceVO"
+		resultType="attendanceVO">
+		SELECT
+		W.WR_NO,
+		W.MEM_ID,
+		W.ATTEND_TM,
+		W.LVFFC_TM,
+		W.OVER_TIME,
+		W.HOLIDAY_WORK,
+		W.OUTSIDE_DUTY,
+		W.REMARK,
+		A.TOT_WRKDY_CNT,
+		A.TOT_VACDY_CNT,
+		A.TOT_BIZDY_CNT,
+		A.TOT_OV_TM_WRK,
+		A.TOT_HW_TM,
+		A.TOT_OUTDT_TM
+
+
+		FROM WORK_RECORD W
+		LEFT OUTER JOIN ATTENDANCE A
+		ON(W.MEM_ID = A.MEM_ID)
+		WHERE
+		W.MEM_ID = #{attendanceVO.memId}
+	</select>
+
+
+	<!-- 오늘 근무 현황 -->
+	<select id="today" parameterType="String"
+		resultType="workRecordVO">
+		SELECT
+		WR_NO,
+		MEM_ID,
+		ATTEND_TM,
+		LVFFC_TM,
+
+
+		SUBSTR(ATTEND_TM, 1,
+		2) AS InHOUR,
+		SUBSTR(LVFFC_TM, 1, 2) AS OutHOUR,
+		SUBSTR(ATTEND_TM, 4, 2)
+		AS InMINUTE,
+		SUBSTR(LVFFC_TM, 4, 2) AS OutMINUTE,
+
+
+		(TO_NUMBER(SUBSTR(LVFFC_TM, 1, 2)) - TO_NUMBER(SUBSTR(ATTEND_TM, 1,
+		2))) AS HOUR,
+
+
+		(TO_NUMBER(SUBSTR(LVFFC_TM, 4, 2)) -
+		TO_NUMBER(SUBSTR(ATTEND_TM, 4,
+		2))) AS MINUITE,
+
+
+		ALLHOUR,
+
+		(SELECT
+		COUNT(DISTINCT TO_DATE(SUBSTR(WR_NO, 1, 8), 'YYYYMMDD'))
+		FROM
+		WORK_RECORD
+		WHERE MEM_ID = #{memId}) AS WORKCNT,
+
+
+		TO_CHAR(
+		FLOOR(
+		EXTRACT(HOUR FROM (SYSDATE - TO_TIMESTAMP(ATTEND_TM, 'HH24:MI:SS'))) +
+		(EXTRACT(MINUTE FROM (SYSDATE - TO_TIMESTAMP(ATTEND_TM,
+		'HH24:MI:SS'))) / 60)
+		), 'FM00'
+		) AS NOWHH,
+
+		TO_CHAR(
+		MOD(EXTRACT(MINUTE
+		FROM (SYSDATE - TO_TIMESTAMP(ATTEND_TM, 'HH24:MI:SS'))), 60),
+		'FM00'
+		)
+		AS NOWMI,
+
+
+		(SELECT TRUNC(
+		SUM(
+		(TO_NUMBER(SUBSTR(LVFFC_TM, 1, 2)) -
+		TO_NUMBER(SUBSTR(ATTEND_TM, 1, 2))) +
+		(TO_NUMBER(SUBSTR(LVFFC_TM, 4,
+		2)) - TO_NUMBER(SUBSTR(ATTEND_TM, 4,
+		2))) / 60
+		)
+		)
+		FROM WORK_RECORD
+		WHERE
+		MEM_ID = #{memId}
+		) AS allAttend
+
+		FROM WORK_RECORD
+		WHERE MEM_ID = #{memId}
+		AND TO_DATE(SUBSTR(WR_NO, 1, 8), 'YYYYMMDD') = TRUNC(SYSDATE)
+
+	</select>
+
+
+	<!-- 협력업체 정보 -->
+	<resultMap type="workRecordVO" id="workRecordMap">
+		<result property="hour" column="HOUR" />
+		<result property="minuite" column="MINUITE" />
+		<result property="wrNo" column="WR_NO" />
+		<result property="memId" column="MEM_ID" />
+		<result property="attendTm" column="ATTEND_TM" />
+		<result property="lvffcTm" column="LVFFC_TM" />
+		<result property="overTime" column="OVER_TIME" />
+		<result property="holidayWork" column="HOLIDAY_WORK" />
+		<result property="outsideDuty" column="OUTSIDE_DUTY" />
+		<result property="remark" column="REMARK" />
+		<result property="inHour" column="InHOUR" />
+		<result property="outHour" column="OutHOUR" />
+		<result property="inMinuite" column="InMINUTE" />
+		<result property="outMinuiteE" column="OutMINUTE" />
+		<result property="hour" column="HOUR" />
+		<result property="Minuite" column="MINUITE" />
+		<result property="workCnt" column="WORKCNT" />
+		<result property="allHour" column="ALLHOUR" />
+		<result property="nowHour" column="NOWHOUR" />
+		<result property="nowHh" column="NOWHH" />
+		<result property="nowMi" column="NOWMI" />
+		<result property="allAttend" column="allAttend" />
+	</resultMap>
+
+
+	<select id="list" parameterType="attendanceVO"
+		resultType="attendanceVO">
+		SELECT
+		W.WR_NO,
+		W.MEM_ID,
+		W.ATTEND_TM,
+		W.LVFFC_TM,
+		W.OVER_TIME,
+		W.HOLIDAY_WORK,
+		W.OUTSIDE_DUTY,
+		W.REMARK,
+		W.ALLHOUR,
+		A.TOT_WRKDY_CNT,
+		A.TOT_VACDY_CNT,
+		A.TOT_BIZDY_CNT,
+		A.TOT_OV_TM_WRK,
+		A.TOT_HW_TM,
+		A.TOT_OUTDT_TM
+		FROM
+		WORK_RECORD W
+		LEFT OUTER JOIN ATTENDANCE A ON
+		(W.MEM_ID = A.MEM_ID)
+		WHERE
+		W.MEM_ID = #{attendanceVO.memId}
+		ORDER BY
+		SUBSTR(W.WR_NO, 1, 8) ASC
+	</select>
+	<insert id="workIn" parameterType="attendanceVO">
+		<selectKey keyProperty="wrNo" resultType="String"
+			order="BEFORE">
+			SELECT TO_CHAR(SYSDATE, 'YYYYMMDD') || '' ||
+			LPAD(NVL(MAX(SUBSTR(WR_NO, -3)) + 1, 1), 3, '0') AS WR_NO
+			FROM
+			WORK_RECORD
+			WHERE SUBSTR(WR_NO, 8, 8) = TO_CHAR(SYSDATE, 'YYYYMMDD')
+		</selectKey>
+		INSERT INTO WORK_RECORD
+		(
+		WR_NO, MEM_ID, ATTEND_TM
+
+		)
+		values
+		(
+		#{wrNo},
+		#{memId},
+		TO_CHAR(SYSDATE, 'HH24:MI:SS')
+		)
+	</insert>
+
+	<update id="workOut" parameterType="String">
+		<!-- <selectKey keyProperty="wrNo" resultType="String" -->
+		<!-- order="BEFORE"> -->
+		<!-- SELECT TO_CHAR(SYSDATE, 'YYYYMMDD') || '' || -->
+		<!-- LPAD(NVL(MAX(SUBSTR(WR_NO, -3)) + 1, 1), 3, '0') AS WR_NO -->
+		<!-- FROM -->
+		<!-- WORK_RECORD -->
+		<!-- WHERE SUBSTR(WR_NO, 8, 8) = TO_CHAR(SYSDATE, 'YYYYMMDD') -->
+		<!-- </selectKey> -->
+
+		UPDATE WORK_RECORD
+		SET
+		LVFFC_TM = TO_CHAR(SYSDATE, 'HH24:MI:SS'),
+		ALLHOUR = CASE
+		WHEN TO_CHAR(SYSDATE, 'HH24:MI:SS') IS NOT NULL THEN
+		TO_CHAR(FLOOR((TO_DATE(TO_CHAR(SYSDATE, 'HH24:MI:SS'), 'HH24:MI:SS') -
+		TO_DATE(ATTEND_TM, 'HH24:MI:SS')) * 24), 'FM00') || 'h' ||
+		TO_CHAR(MOD(FLOOR((TO_DATE(TO_CHAR(SYSDATE, 'HH24:MI:SS'),
+		'HH24:MI:SS') - TO_DATE(ATTEND_TM, 'HH24:MI:SS')) * 24 * 60), 60),
+		'FM00') || 'm'
+		ELSE NULL
+		END
+		WHERE
+		WR_NO = #{wrNo} AND
+		MEM_ID = #{memId}
+	</update>
+
+
+
+	<!-- 오늘 근태현황 -->
+	<select id="todayAttendance" parameterType="String"
+		resultType="workRecordVO">
+		SELECT
+		WR_NO,
+		MEM_ID,
+		ATTEND_TM,  <!-- 출근 -->
+		LVFFC_TM  <!-- 퇴근 -->
+		FROM WORK_RECORD
+		WHERE MEM_ID = #{memId}
+		AND TO_DATE(SUBSTR(WR_NO, 1,
+		8), 'YYYYMMDD') = TRUNC(SYSDATE)
+	</select>
+
+	<select id="getHolidayVO" parameterType="String" resultType="employeeVO">
+		SELECT MEM_ID, EMP_NM, EMP_RRNO, EMP_EML, EMP_MOBLPHON, EMP_ZIP, EMP_ROAD_NM_ADDR, EMP_DADDR, EMP_IMG_URL, EMP_YRYC_DAYCNT, EMP_HDOF_STAT, EMP_JNCMP_YMD, EMP_RSGNTN_YMD, EMP_ATRZ_SGN, JBGD_CD, DEPT_CD, EMP_GENDER, EMP_IMG_NM
+		FROM EMPLOYEE
+		WHERE MEM_ID = #{memId}
+	</select>
+
+
+
+
+
+</mapper>
