@@ -144,5 +144,6 @@ sts-bundle/
 .classpath
 .project
 ams/src/main/resources/*.properties
+ams/src/main/webapp/WEB-INF/spring/*
 
 # End of https://www.toptal.com/developers/gitignore/api/eclipse,java,windows,svn,git
