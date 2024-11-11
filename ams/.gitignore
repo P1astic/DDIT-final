@@ -138,13 +138,13 @@ $RECYCLE.BIN/
 *.lnk
 
 #Hong
-/src/main/webapp/resources/*
+src/main/webapp/resources/*
 target/
 sts-bundle/
 .classpath
 .project
-/src/main/resources/*.properties
-/src/main/webapp/WEB-INF/spring/*
+src/main/resources/*.properties
+src/main/webapp/WEB-INF/spring/*
 
 
 # End of https://www.toptal.com/developers/gitignore/api/eclipse,java,windows,svn,git
